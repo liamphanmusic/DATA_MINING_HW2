@@ -47,11 +47,36 @@ library(manipulateWidget) # Handling multiple plotly graphs
 > Those are required packages
 
 
+
+# <span style="color: #1c6155;">Exercise 1.</span> 
+
+## 5.6 Evaluating Predictive Performance
+
+### a. 
+
+> If the company beings working with a new set of 1000 leads to sell the same services, similar to the 500 in the plot study, witout any use of predictive modeling to target sales efforts, what is the estimated profit? 
+
+### b.
+
+> If the firm wants the average profit on each sale to at least double the sales effort cost, and applies an appopriate cutoff with this predictive model to a new set of 1000 leads, how far down the new list of 1000 should it proceed (how many deciles)?
+
+### c.
+
+> Still considering the new list of 1000 leads, if the company applies this predictive model with a lower cutoff of $2500, how far should it proceed down the ranked leads, in terms of deciles?
+
+### d. 
+
+> Why use this two-stage process for predicting sales--why not simply develop a model for predicting profit for the 1000 new leads?
+
 # <span style="color: #1c6155;">Exercise 2.</span> 
 
+
 # <span style="color: #1c6155;">Exercise 3.</span>
+
 
 
 # <span style="color: #1c6155;">References</span>
 
 [Github Repo for this Homework 2](https://github.com/LiamPhan17/DATA_MINING_HW2)
+
+[Data Mining for Business Analytics: Concepts, Techniques, and Applications in R](https://www.wiley.com/en-us/Data+Mining+for+Business+Analytics:+Concepts,+Techniques,+and+Applications+in+R-p-9781118879368)
