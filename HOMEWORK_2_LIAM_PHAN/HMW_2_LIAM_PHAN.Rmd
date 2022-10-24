@@ -54,4 +54,4 @@ library(manipulateWidget) # Handling multiple plotly graphs
 
 # <span style="color: #1c6155;">References</span>
 
-[Github Repo for this Homework 2](https://github.com/LiamPhan17/DATA_MINING_HW1)
+[Github Repo for this Homework 2](https://github.com/LiamPhan17/DATA_MINING_HW2)
