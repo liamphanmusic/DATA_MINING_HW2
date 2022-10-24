@@ -1,11 +1,57 @@
 ---
-title: "HOMEWORK_2_LIAM_PHAN"
-author: "LIAM PHAN"
+title: "HOMEWORK 2 - Creating Value Through Data Mining (S402010)"
+author: "Liam Phan"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  rmdformats::material :
+    self_contained: true
+    thumbnails: true
+    lightbox: true
+    gallery: true
+    highlight: tango
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls()) # clean environment
 ```
 
+# <span style="color: #1c6155;">Quick Start</span> 
+
+## Loading Packages
+
+```{r 2, warning=FALSE, message=FALSE }
+
+library(data.table) # Efficient Dataframe 
+library(lubridate) # For Dates 
+library(tidyverse) # Multiple Package for Useful Data wrangling
+library(esquisse) # Intuitive plotting
+library(plyr) # Data splitting
+library(ggplot2) # Plot Graphs
+library(naniar) # for NA exploration in Dataframe
+library(sp) # spatial data
+library(plotly) # Make ggplot2 Dynamic
+library(gissr) # Spatial Transformations
+library(leaflet) # For Map
+library(leaflet.providers) # For Custom Icons
+library(geosphere) # Spatial Calculations
+library(DT) # Render Table in a explorable UI
+library(gridExtra) # Multiple Plot at once
+library(corrplot) # Correlation Plot
+library(RColorBrewer) # For Color Palette
+library(rmdformats) # Theme of HTML
+library(manipulateWidget) # Handling multiple plotly graphs
+
+```
+
+> Those are required packages
+
+
+# <span style="color: #1c6155;">Exercise 2.</span> 
+
+# <span style="color: #1c6155;">Exercise 3.</span>
+
+
+# <span style="color: #1c6155;">References</span>
+
+[Github Repo for this Homework 2](https://github.com/LiamPhan17/DATA_MINING_HW1)
