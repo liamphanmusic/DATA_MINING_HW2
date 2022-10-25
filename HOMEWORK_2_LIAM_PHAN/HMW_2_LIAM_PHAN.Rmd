@@ -12,8 +12,9 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,warning = FALSE, message = FALSE)
 rm(list = ls()) # clean environment
+cat("\014") # clean console
 ```
 
 # <span style="color: #1c6155;">Quick Start</span> 
@@ -153,7 +154,38 @@ validation_prop_100 <- (validation_prop[1]/nrow(UniversalBank1))*100
 
 paste(train_prop_100,"% In Training",validation_prop_100,"% In Validation")
 
+``` 
+
+### a. Considering the following customer: 
+
+> Age = 40, Experience = 10, Income = 84, Family = 2, CCAvg = 2, Education_1 = 0, Education_2 = 1, Education_3 = 0, Mortgage = 0, Securities Account = 0, CD Account = 0, Online = 1, and Credit Card = 1. 
+
+Perform a Κ-NN Classification with all predictors except ID and ZIP code using Κ = 1 
+
+```{r 5, echo=TRUE}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ```
+
+
+
+
+
+
 
 # <span style="color: #1c6155;">Exercise 3.</span>
 
