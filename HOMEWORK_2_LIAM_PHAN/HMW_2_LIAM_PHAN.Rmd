@@ -20,7 +20,7 @@ rm(list = ls()) # clean environment
 
 ## Loading Packages
 
-```{r 2, warning=FALSE, message=FALSE }
+```{r 1, warning=FALSE, message=FALSE }
 
 library(data.table) # Efficient Dataframe 
 library(lubridate) # For Dates 
@@ -41,6 +41,7 @@ library(corrplot) # Correlation Plot
 library(RColorBrewer) # For Color Palette
 library(rmdformats) # Theme of HTML
 library(manipulateWidget) # Handling multiple plotly graphs
+library(caTools) # Split Training and Validation Sets
 
 ```
 
@@ -104,33 +105,55 @@ If we take a look at the Decile-wise lift chart, we see that the 6th decile (app
 
 ## 7.2 Personnal Loan Acceptance
 
-### Loading Dataset
+### Loading Dataset and Basic Data Quality Check
 
-```{r 1, echo=False}
+Dimensions, Variables Count and Dataset Structure
+
+```{r 2, echo=FALSE, warning=FALSE}
 
 UniversalBank1 <- fread("DATA/UniversalBank.csv")
-
+dim(UniversalBank1)
+sapply(UniversalBank1, function(x) length(unique(x)))
+str(UniversalBank1)
 
 ```
 
+<center>
 
+Missing Variables Plot
 
+```{r 3,echo=FALSE,warning=FALSE}
 
+gg_miss_var(UniversalBank1, show_pct = TRUE)
 
+```
 
+No Missing Values
 
+</center>
 
+### Partition The Data Into Training (60%) and Validation (40%) Sets
 
+```{r 4, warning=FALSE}
 
+# Setting Seed
+set.seed(1)
 
+# Splitting Training and Validation 
+sample <- sample(c(TRUE, FALSE), nrow(UniversalBank1), replace=TRUE, prob=c(0.6,0.4))
+training  <- UniversalBank1[sample, ]
+validation   <- UniversalBank1[!sample, ]
 
+# Checking if proportions are right
+train_prop <- dim(training)
+validation_prop <- dim(validation)
 
+train_prop_100 <- (train_prop[1]/nrow(UniversalBank1))*100
+validation_prop_100 <- (validation_prop[1]/nrow(UniversalBank1))*100
 
+paste(train_prop_100,"% In Training",validation_prop_100,"% In Validation")
 
-
-
-
-
+```
 
 # <span style="color: #1c6155;">Exercise 3.</span>
 
@@ -141,3 +164,5 @@ UniversalBank1 <- fread("DATA/UniversalBank.csv")
 [Github Repo for this Homework 2](https://github.com/LiamPhan17/DATA_MINING_HW2)
 
 [Data Mining for Business Analytics: Concepts, Techniques, and Applications in R](https://www.wiley.com/en-us/Data+Mining+for+Business+Analytics:+Concepts,+Techniques,+and+Applications+in+R-p-9781118879368)
+
+[How to Split Data into Training & Test Sets in R (3 Methods)](https://www.statology.org/train-test-split-r/)
