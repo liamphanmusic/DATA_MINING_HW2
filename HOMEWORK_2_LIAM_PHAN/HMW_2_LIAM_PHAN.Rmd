@@ -43,6 +43,8 @@ library(RColorBrewer) # For Color Palette
 library(rmdformats) # Theme of HTML
 library(manipulateWidget) # Handling multiple plotly graphs
 library(caTools) # Split Training and Validation Sets
+library(flextable) # Show Table
+library(class)
 
 ```
 
@@ -113,9 +115,16 @@ Dimensions, Variables Count and Dataset Structure
 ```{r 2, echo=FALSE, warning=FALSE}
 
 UniversalBank1 <- fread("DATA/UniversalBank.csv")
+
+flextable(head(UniversalBank1)) %>% 
+  fontsize(size = 7, part = "all")
+
 dim(UniversalBank1)
+
 sapply(UniversalBank1, function(x) length(unique(x)))
+
 str(UniversalBank1)
+
 
 ```
 
@@ -164,19 +173,43 @@ Perform a Κ-NN Classification with all predictors except ID and ZIP code using 
 
 ```{r 5, echo=TRUE}
 
+# Removing Some Predictors
+training <- training[,-c("ID","ZIP Code")]
+validation <- validation[,-c("ID","ZIP Code")]
 
+# Target Variable As Factor
+training$`Personal Loan` = as.factor(training$`Personal Loan`) 
 
+# Others As Factor
+training$Education = as.factor(training$Education)
 
+# As Numeric
+training$Age <- as.numeric(training$Age)
+training$Experience <- as.numeric(training$Experience)
+training$Income <- as.numeric(training$Income)
+training$Family <- as.numeric(training$Family)
+training$CCAvg <- as.numeric(training$CCAvg)
+training$Mortgage <- as.numeric(training$CCAvg)
 
+# Checking Structure
+str(training)
 
+# Scaling 
+training$Age <- scale(training$Age)
+training$Experience <- scale(training$Experience)
+training$Income <- scale(training$Income)
+training$Family <- scale(training$Family)
+training$CCAvg <- scale(training$CCAvg)
+training$Mortgage <- scale(training$Mortgage)
 
+# Table after Scaling
 
+flextable(head(training)) %>% 
+  fontsize(size = 7, part = "all")
 
+# KNN Model using Class::knn3
 
-
-
-
-
+knn_model_1 <- knn3(`Personal Loan`~., data = training, k = 1)
 
 
 ```
