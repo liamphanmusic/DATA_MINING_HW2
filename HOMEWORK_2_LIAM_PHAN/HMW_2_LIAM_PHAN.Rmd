@@ -46,8 +46,6 @@ library(manipulateWidget) # Handling multiple plotly graphs
 
 > Those are required packages
 
-
-
 # <span style="color: #1c6155;">Exercise 1.</span> 
 
 ## 5.6 Evaluating Predictive Performance
@@ -56,19 +54,82 @@ library(manipulateWidget) # Handling multiple plotly graphs
 
 > If the company beings working with a new set of 1000 leads to sell the same services, similar to the 500 in the plot study, witout any use of predictive modeling to target sales efforts, what is the estimated profit? 
 
+<br />
+
+Without any predictive modeling, we can roughly estimated the profit with the following formula: 
+
+$$ Profit_{Estimated} = 1000*\$2128 = \$2128000  $$
+
+<br />
+
+But the company will also have expenditures related to their sales, which would negatively impact the Total Profit. The sales effort would be:
+
+$$ Costs_{Estimated} = 1000*\$2500 = \$2500000   $$
+
+<br />
+
+Leading to negative Total Profit of... 
+
+$$ TotalProfit_{Estimated} = Profit_{Estimated} - Costs_{Estimated} \\ = \$2128000 - \$2500000 = - \$372000  $$
+
+<br />
+
 ### b.
 
 > If the firm wants the average profit on each sale to at least double the sales effort cost, and applies an appopriate cutoff with this predictive model to a new set of 1000 leads, how far down the new list of 1000 should it proceed (how many deciles)?
 
+If we want to double the average profit on each sale, we should take the first decile (10%) on the Decile-wise lift chart which double the mean. 
+
+$$ Ratio_{Estimated} = \dfrac{2*\$2500}{\$2128} = 2.35 $$
+
+<br />
+
 ### c.
 
 > Still considering the new list of 1000 leads, if the company applies this predictive model with a lower cutoff of $2500, how far should it proceed down the ranked leads, in terms of deciles?
+
+We want the cutoff to be $2500: 
+
+$$ Ratio_{Estimated} = \dfrac{\$2500}{\$2128} = 1.17 $$
+
+If we take a look at the Decile-wise lift chart, we see that the 6th decile (approx mean-reponse of 1, same as 2128$)
+
+<br />
 
 ### d. 
 
 > Why use this two-stage process for predicting sales--why not simply develop a model for predicting profit for the 1000 new leads?
 
 # <span style="color: #1c6155;">Exercise 2.</span> 
+
+## 7.2 Personnal Loan Acceptance
+
+### Loading Dataset
+
+```{r 1, echo=False}
+
+UniversalBank1 <- fread("DATA/UniversalBank.csv")
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # <span style="color: #1c6155;">Exercise 3.</span>
