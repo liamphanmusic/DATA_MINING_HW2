@@ -7,7 +7,7 @@
 
         <meta name="author" content="Liam Phan" />
     
-        <meta name="date" content="2022-10-25" />
+        <meta name="date" content="2022-10-26" />
     
     <title>HOMEWORK 2 - Creating Value Through Data Mining (S402010)</title>
     <!-- Material Design fonts -->
@@ -224,6 +224,79 @@ window.buildTabsets = function(tocID) {
   });
 };
 
+</script>
+        <script>
+window.initializeCodeFolding = function(show) {
+
+  // handlers for show-all and hide all
+  $("#rmd-show-all-code").click(function() {
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('show');
+    });
+  });
+  $("#rmd-hide-all-code").click(function() {
+    $('div.r-code-collapse').each(function() {
+      $(this).collapse('hide');
+    });
+  });
+
+  // index for unique code element ids
+  var currentIndex = 1;
+
+  // select all R code blocks
+  var rCodeBlocks = $('pre.r, pre.python, pre.bash, pre.sql, pre.cpp, pre.stan, pre.julia, pre.foldable');
+  rCodeBlocks.each(function() {
+
+    // create a collapsable div to wrap the code in
+    var div = $('<div class="collapse r-code-collapse"></div>');
+    var showThis = (show || $(this).hasClass('fold-show')) && !$(this).hasClass('fold-hide');
+    var id = 'rcode-643E0F36' + currentIndex++;
+    div.attr('id', id);
+    $(this).before(div);
+    $(this).detach().appendTo(div);
+
+    // add a show code button right above
+    var showCodeText = $('<span>' + (showThis ? 'Hide' : 'Code') + '</span>');
+    var showCodeButton = $('<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm code-folding-btn pull-right float-right"></button>');
+    showCodeButton.append(showCodeText);
+    showCodeButton
+        .attr('data-toggle', 'collapse')
+        .attr('data-target', '#' + id)
+        .attr('aria-expanded', showThis)
+        .attr('aria-controls', id);
+
+    var buttonRow = $('<div class="row"></div>');
+    var buttonCol = $('<div class="col-md-12"></div>');
+
+    buttonCol.append(showCodeButton);
+    buttonRow.append(buttonCol);
+
+    div.before(buttonRow);
+
+    // show the div if necessary
+    if (showThis) div.collapse('show');
+
+    // update state of button on show/hide
+    //   * Change text
+    //   * add a class for intermediate states styling
+    div.on('hide.bs.collapse', function () {
+      showCodeText.text('Code');
+      showCodeButton.addClass('btn-collapsing');
+    });
+    div.on('hidden.bs.collapse', function () {
+      showCodeButton.removeClass('btn-collapsing');
+    });
+    div.on('show.bs.collapse', function () {
+      showCodeText.text('Hide');
+      showCodeButton.addClass('btn-expanding');
+    });
+    div.on('shown.bs.collapse', function () {
+      showCodeButton.removeClass('btn-expanding');
+    });
+
+  });
+
+}
 </script>
         <style type="text/css">
 .mfp-bg {
@@ -850,6 +923,50 @@ font-weight: bold;
 
 });
 </script>
+        <style type="text/css">.tabwid table{
+border-spacing:0px !important;
+border-collapse:collapse;
+line-height:1;
+margin-left:auto;
+margin-right:auto;
+border-width: 0;
+display: table;
+border-color: transparent;
+caption-side: top;
+}
+.tabwid-caption-bottom table{
+caption-side: bottom;
+}
+.tabwid_left table{
+margin-left:0;
+}
+.tabwid_right table{
+margin-right:0;
+}
+.tabwid td {
+padding: 0;
+}
+.tabwid a {
+text-decoration: none;
+}
+.tabwid thead {
+background-color: transparent;
+}
+.tabwid tfoot {
+background-color: transparent;
+}
+.tabwid table tr {
+background-color: transparent;
+}
+.katex-display {
+margin: 0 0 !important;
+}
+</style>
+        <style type="text/css">.flextable-shadow-host{
+overflow: auto;
+-ms-overflow-style: auto;
+}
+</style>
     
     
         <style type="text/css">code{white-space: pre;}</style>
@@ -932,6 +1049,11 @@ font-weight: bold;
     </script>
 
     <!-- code folding -->
+        <script>
+      $(document).ready(function () {
+	  	  	  window.initializeCodeFolding("hide" === "show");
+	        });
+    </script>
     
     <!-- code download -->
     
@@ -1013,7 +1135,7 @@ font-weight: bold;
 	    <h1 class="title">HOMEWORK 2 - Creating Value Through Data Mining
 (S402010)</h1>
 	    	    	    	    <h4 class="author">Liam Phan</h4>
-	    	    	    	    <h4 class="date">2022-10-25</h4>
+	    	    	    	    <h4 class="date">2022-10-26</h4>
 	    	  </div>
 	  	</div>
       </div>
@@ -1055,21 +1177,19 @@ Start</span></a></li>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse) <span class="co"># Multiple Package for Useful Data wrangling</span></span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(esquisse) <span class="co"># Intuitive plotting</span></span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(plyr) <span class="co"># Data splitting</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2) <span class="co"># Plot Graphs</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(naniar) <span class="co"># for NA exploration in Dataframe</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sp) <span class="co"># spatial data</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2) <span class="co"># Plot Graphs</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(naniar) <span class="co"># for NA exploration in Dataframe</span></span>
 <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(plotly) <span class="co"># Make ggplot2 Dynamic</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gissr) <span class="co"># Spatial Transformations</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(leaflet) <span class="co"># For Map</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(leaflet.providers) <span class="co"># For Custom Icons</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(geosphere) <span class="co"># Spatial Calculations</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(DT) <span class="co"># Render Table in a explorable UI</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gridExtra) <span class="co"># Multiple Plot at once</span></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(corrplot) <span class="co"># Correlation Plot</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(RColorBrewer) <span class="co"># For Color Palette</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rmdformats) <span class="co"># Theme of HTML</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(manipulateWidget) <span class="co"># Handling multiple plotly graphs</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(caTools) <span class="co"># Split Training and Validation Sets</span></span></code></pre></div>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(DT) <span class="co"># Render Table in a explorable UI</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gridExtra) <span class="co"># Multiple Plot at once</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(corrplot) <span class="co"># Correlation Plot</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(RColorBrewer) <span class="co"># For Color Palette</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rmdformats) <span class="co"># Theme of HTML</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(manipulateWidget) <span class="co"># Handling multiple plotly graphs</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(caTools) <span class="co"># Split Training and Validation Sets</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(flextable) <span class="co"># Show Table</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(class) <span class="co"># K-NN</span></span></code></pre></div>
 <blockquote>
 <p>Those are required packages</p>
 </blockquote>
@@ -1150,6 +1270,56 @@ develop a model for predicting profit for the 1000 new leads?</p>
 <div id="loading-dataset-and-basic-data-quality-check" class="section level3">
 <h3>Loading Dataset and Basic Data Quality Check</h3>
 <p>Dimensions, Variables Count and Dataset Structure</p>
+<template id="66b2be10-bf6b-4890-92f0-ac42c3f85fa8"><style>
+.tabwid table{
+  border-spacing:0px !important;
+  border-collapse:collapse;
+  line-height:1;
+  margin-left:auto;
+  margin-right:auto;
+  border-width: 0;
+  display: table;
+  border-color: transparent;
+  caption-side: top;
+}
+.tabwid-caption-bottom table{
+  caption-side: bottom;
+}
+.tabwid_left table{
+  margin-left:0;
+}
+.tabwid_right table{
+  margin-right:0;
+}
+.tabwid td {
+    padding: 0;
+}
+.tabwid a {
+  text-decoration: none;
+}
+.tabwid thead {
+    background-color: transparent;
+}
+.tabwid tfoot {
+    background-color: transparent;
+}
+.tabwid table tr {
+background-color: transparent;
+}
+.katex-display {
+    margin: 0 0 !important;
+}
+</style><div class="tabwid"><style>.cl-ebadc228{}.cl-eba6423c{font-family:'Arial';font-size:7pt;font-weight:normal;font-style:normal;text-decoration:none;color:rgba(0, 0, 0, 1.00);background-color:transparent;}.cl-eba91520{margin:0;text-align:right;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);padding-bottom:5pt;padding-top:5pt;padding-left:5pt;padding-right:5pt;line-height: 1;background-color:transparent;}.cl-eba91521{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 2pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-eba91522{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-eba91523{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}</style><table class="cl-ebadc228"><thead><tr style="overflow-wrap:break-word;"><td class="cl-eba91521"><p class="cl-eba91520"><span class="cl-eba6423c">ID</span></p></td><td class="cl-eba91521"><p class="cl-eba91520"><span class="cl-eba6423c">Age</span></p></td><td class="cl-eba91521"><p class="cl-eba91520"><span class="cl-eba6423c">Experience</span></p></td><td class="cl-eba91521"><p class="cl-eba91520"><span class="cl-eba6423c">Income</span></p></td><td class="cl-eba91521"><p class="cl-eba91520"><span class="cl-eba6423c">ZIP Code</span></p></td><td class="cl-eba91521"><p class="cl-eba91520"><span class="cl-eba6423c">Family</span></p></td><td class="cl-eba91521"><p class="cl-eba91520"><span class="cl-eba6423c">CCAvg</span></p></td><td class="cl-eba91521"><p class="cl-eba91520"><span class="cl-eba6423c">Education</span></p></td><td class="cl-eba91521"><p class="cl-eba91520"><span class="cl-eba6423c">Mortgage</span></p></td><td class="cl-eba91521"><p class="cl-eba91520"><span class="cl-eba6423c">Personal Loan</span></p></td><td class="cl-eba91521"><p class="cl-eba91520"><span class="cl-eba6423c">Securities Account</span></p></td><td class="cl-eba91521"><p class="cl-eba91520"><span class="cl-eba6423c">CD Account</span></p></td><td class="cl-eba91521"><p class="cl-eba91520"><span class="cl-eba6423c">Online</span></p></td><td class="cl-eba91521"><p class="cl-eba91520"><span class="cl-eba6423c">CreditCard</span></p></td></tr></thead><tbody><tr style="overflow-wrap:break-word;"><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">1</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">25</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">1</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">49</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">91,107</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">4</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">1.6</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">1</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">1</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">2</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">45</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">19</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">34</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">90,089</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">3</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">1.5</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">1</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">1</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">3</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">39</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">15</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">11</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">94,720</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">1</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">1.0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">1</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">4</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">35</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">9</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">100</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">94,112</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">1</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">2.7</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">2</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">5</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">35</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">8</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">45</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">91,330</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">4</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">1.0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">2</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91522"><p class="cl-eba91520"><span class="cl-eba6423c">1</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-eba91523"><p class="cl-eba91520"><span class="cl-eba6423c">6</span></p></td><td class="cl-eba91523"><p class="cl-eba91520"><span class="cl-eba6423c">37</span></p></td><td class="cl-eba91523"><p class="cl-eba91520"><span class="cl-eba6423c">13</span></p></td><td class="cl-eba91523"><p class="cl-eba91520"><span class="cl-eba6423c">29</span></p></td><td class="cl-eba91523"><p class="cl-eba91520"><span class="cl-eba6423c">92,121</span></p></td><td class="cl-eba91523"><p class="cl-eba91520"><span class="cl-eba6423c">4</span></p></td><td class="cl-eba91523"><p class="cl-eba91520"><span class="cl-eba6423c">0.4</span></p></td><td class="cl-eba91523"><p class="cl-eba91520"><span class="cl-eba6423c">2</span></p></td><td class="cl-eba91523"><p class="cl-eba91520"><span class="cl-eba6423c">155</span></p></td><td class="cl-eba91523"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91523"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91523"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td><td class="cl-eba91523"><p class="cl-eba91520"><span class="cl-eba6423c">1</span></p></td><td class="cl-eba91523"><p class="cl-eba91520"><span class="cl-eba6423c">0</span></p></td></tr></tbody></table></div></template>
+<div class="flextable-shadow-host" id="69558479-69aa-447a-bc5b-99b811962c7d"></div>
+<script>
+var dest = document.getElementById("69558479-69aa-447a-bc5b-99b811962c7d");
+var template = document.getElementById("66b2be10-bf6b-4890-92f0-ac42c3f85fa8");
+var caption = template.content.querySelector("caption");
+var fantome = dest.attachShadow({mode: 'open'});
+var templateContent = template.content;
+fantome.appendChild(templateContent);
+</script>
+
 <pre><code>## [1] 5000   14</code></pre>
 <pre><code>##                 ID                Age         Experience             Income 
 ##               5000                 45                 47                162 
@@ -1210,10 +1380,158 @@ Education_1 = 0, Education_2 = 1, Education_3 = 0, Mortgage = 0,
 Securities Account = 0, CD Account = 0, Online = 1, and Credit Card =
 1.</p>
 </blockquote>
-<div id="perform-a-κ-nn-classification-with-all-predictors-except-id-and-zip-code-using-κ-1" class="section level4">
-<h4>Perform a κ-NN Classification with all predictors except ID and ZIP
-code using κ = 1</h4>
-</div>
+<p>Perform a Κ-NN Classification with all predictors except ID and ZIP
+code using Κ = 1</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Removing Some Predictors</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>training <span class="ot">&lt;-</span> training[,<span class="sc">-</span><span class="fu">c</span>(<span class="st">&quot;ID&quot;</span>,<span class="st">&quot;ZIP Code&quot;</span>)]</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>validation <span class="ot">&lt;-</span> validation[,<span class="sc">-</span><span class="fu">c</span>(<span class="st">&quot;ID&quot;</span>,<span class="st">&quot;ZIP Code&quot;</span>)]</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Target Variable As Factor</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>training<span class="sc">$</span><span class="st">`</span><span class="at">Personal Loan</span><span class="st">`</span> <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(training<span class="sc">$</span><span class="st">`</span><span class="at">Personal Loan</span><span class="st">`</span>) </span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>validation<span class="sc">$</span><span class="st">`</span><span class="at">Personal Loan</span><span class="st">`</span> <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(validation<span class="sc">$</span><span class="st">`</span><span class="at">Personal Loan</span><span class="st">`</span>) </span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Education As Factor</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>training<span class="sc">$</span>Education <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(training<span class="sc">$</span>Education) </span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>validation<span class="sc">$</span>Education <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(validation<span class="sc">$</span>Education) </span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Education One-Hot Encoding</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>Education_As_Dummy_Training <span class="ot">&lt;-</span> <span class="fu">model.matrix</span>(<span class="sc">~</span><span class="dv">0</span><span class="sc">+</span>training<span class="sc">$</span>Education)</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>Education_As_Dummy_Validation <span class="ot">&lt;-</span> <span class="fu">model.matrix</span>(<span class="sc">~</span><span class="dv">0</span><span class="sc">+</span>validation<span class="sc">$</span>Education)</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Append to Training and Validation Sets</span></span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>training <span class="ot">&lt;-</span> <span class="fu">cbind</span>(training,Education_As_Dummy_Training)</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>training <span class="ot">&lt;-</span> training[,<span class="sc">-</span><span class="fu">c</span>(<span class="st">&quot;Education&quot;</span>)]</span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>validation <span class="ot">&lt;-</span> <span class="fu">cbind</span>(validation,Education_As_Dummy_Validation)</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>validation <span class="ot">&lt;-</span> validation[,<span class="sc">-</span><span class="fu">c</span>(<span class="st">&quot;Education&quot;</span>)]</span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a><span class="co"># Renaming Education</span></span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>training <span class="ot">=</span> training <span class="sc">%&gt;%</span> <span class="fu">rename</span>( <span class="at">Education_1 =</span> <span class="st">`</span><span class="at">training$Education1</span><span class="st">`</span> , <span class="at">Education_2 =</span> <span class="st">`</span><span class="at">training$Education2</span><span class="st">`</span>, <span class="at">Education_3 =</span> <span class="st">`</span><span class="at">training$Education3</span><span class="st">`</span>)</span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>validation <span class="ot">=</span> validation <span class="sc">%&gt;%</span> <span class="fu">rename</span>( <span class="at">Education_1 =</span> <span class="st">`</span><span class="at">validation$Education1</span><span class="st">`</span> , <span class="at">Education_2 =</span> <span class="st">`</span><span class="at">validation$Education2</span><span class="st">`</span>, <span class="at">Education_3 =</span> <span class="st">`</span><span class="at">validation$Education3</span><span class="st">`</span>)</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a><span class="co"># As Numeric</span></span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>training<span class="sc">$</span>Age <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(training<span class="sc">$</span>Age)</span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>training<span class="sc">$</span>Experience <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(training<span class="sc">$</span>Experience)</span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a>training<span class="sc">$</span>Income <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(training<span class="sc">$</span>Income)</span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>training<span class="sc">$</span>Family <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(training<span class="sc">$</span>Family)</span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>training<span class="sc">$</span>CCAvg <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(training<span class="sc">$</span>CCAvg)</span>
+<span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a>training<span class="sc">$</span>Mortgage <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(training<span class="sc">$</span>CCAvg)</span>
+<span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a>validation<span class="sc">$</span>Age <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(validation<span class="sc">$</span>Age)</span>
+<span id="cb7-38"><a href="#cb7-38" aria-hidden="true" tabindex="-1"></a>validation<span class="sc">$</span>Experience <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(validation<span class="sc">$</span>Experience)</span>
+<span id="cb7-39"><a href="#cb7-39" aria-hidden="true" tabindex="-1"></a>validation<span class="sc">$</span>Income <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(validation<span class="sc">$</span>Income)</span>
+<span id="cb7-40"><a href="#cb7-40" aria-hidden="true" tabindex="-1"></a>validation<span class="sc">$</span>Family <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(validation<span class="sc">$</span>Family)</span>
+<span id="cb7-41"><a href="#cb7-41" aria-hidden="true" tabindex="-1"></a>validation<span class="sc">$</span>CCAvg <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(validation<span class="sc">$</span>CCAvg)</span>
+<span id="cb7-42"><a href="#cb7-42" aria-hidden="true" tabindex="-1"></a>validation<span class="sc">$</span>Mortgage <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(validation<span class="sc">$</span>CCAvg)</span>
+<span id="cb7-43"><a href="#cb7-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-44"><a href="#cb7-44" aria-hidden="true" tabindex="-1"></a><span class="co"># Checking Structure</span></span>
+<span id="cb7-45"><a href="#cb7-45" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(training)</span>
+<span id="cb7-46"><a href="#cb7-46" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(validation)</span>
+<span id="cb7-47"><a href="#cb7-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-48"><a href="#cb7-48" aria-hidden="true" tabindex="-1"></a><span class="co"># View Data</span></span>
+<span id="cb7-49"><a href="#cb7-49" aria-hidden="true" tabindex="-1"></a><span class="fu">flextable</span>(<span class="fu">head</span>(training)) <span class="sc">%&gt;%</span> </span>
+<span id="cb7-50"><a href="#cb7-50" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fontsize</span>(<span class="at">size =</span> <span class="dv">7</span>, <span class="at">part =</span> <span class="st">&quot;all&quot;</span>)</span>
+<span id="cb7-51"><a href="#cb7-51" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-52"><a href="#cb7-52" aria-hidden="true" tabindex="-1"></a><span class="fu">flextable</span>(<span class="fu">head</span>(validation)) <span class="sc">%&gt;%</span> </span>
+<span id="cb7-53"><a href="#cb7-53" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fontsize</span>(<span class="at">size =</span> <span class="dv">7</span>, <span class="at">part =</span> <span class="st">&quot;all&quot;</span>)</span>
+<span id="cb7-54"><a href="#cb7-54" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-55"><a href="#cb7-55" aria-hidden="true" tabindex="-1"></a><span class="co"># Duplicate Dataset Before Scaling</span></span>
+<span id="cb7-56"><a href="#cb7-56" aria-hidden="true" tabindex="-1"></a>training_scaled <span class="ot">&lt;-</span> training</span>
+<span id="cb7-57"><a href="#cb7-57" aria-hidden="true" tabindex="-1"></a>validation_scaled <span class="ot">&lt;-</span> validation</span>
+<span id="cb7-58"><a href="#cb7-58" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-59"><a href="#cb7-59" aria-hidden="true" tabindex="-1"></a><span class="co"># Scaling </span></span>
+<span id="cb7-60"><a href="#cb7-60" aria-hidden="true" tabindex="-1"></a>training_scaled<span class="sc">$</span>Age <span class="ot">&lt;-</span> <span class="fu">scale</span>(training_scaled<span class="sc">$</span>Age)</span>
+<span id="cb7-61"><a href="#cb7-61" aria-hidden="true" tabindex="-1"></a>training_scaled<span class="sc">$</span>Experience <span class="ot">&lt;-</span> <span class="fu">scale</span>(training_scaled<span class="sc">$</span>Experience)</span>
+<span id="cb7-62"><a href="#cb7-62" aria-hidden="true" tabindex="-1"></a>training_scaled<span class="sc">$</span>Income <span class="ot">&lt;-</span> <span class="fu">scale</span>(training_scaled<span class="sc">$</span>Income)</span>
+<span id="cb7-63"><a href="#cb7-63" aria-hidden="true" tabindex="-1"></a>training_scaled<span class="sc">$</span>Family <span class="ot">&lt;-</span> <span class="fu">scale</span>(training_scaled<span class="sc">$</span>Family)</span>
+<span id="cb7-64"><a href="#cb7-64" aria-hidden="true" tabindex="-1"></a>training_scaled<span class="sc">$</span>CCAvg <span class="ot">&lt;-</span> <span class="fu">scale</span>(training_scaled<span class="sc">$</span>CCAvg)</span>
+<span id="cb7-65"><a href="#cb7-65" aria-hidden="true" tabindex="-1"></a>training_scaled<span class="sc">$</span>Mortgage <span class="ot">&lt;-</span> <span class="fu">scale</span>(training_scaled<span class="sc">$</span>Mortgage)</span>
+<span id="cb7-66"><a href="#cb7-66" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-67"><a href="#cb7-67" aria-hidden="true" tabindex="-1"></a>validation_scaled<span class="sc">$</span>Age <span class="ot">&lt;-</span> <span class="fu">scale</span>(validation_scaled<span class="sc">$</span>Age)</span>
+<span id="cb7-68"><a href="#cb7-68" aria-hidden="true" tabindex="-1"></a>validation_scaled<span class="sc">$</span>Experience <span class="ot">&lt;-</span> <span class="fu">scale</span>(validation_scaled<span class="sc">$</span>Experience)</span>
+<span id="cb7-69"><a href="#cb7-69" aria-hidden="true" tabindex="-1"></a>validation_scaled<span class="sc">$</span>Income <span class="ot">&lt;-</span> <span class="fu">scale</span>(validation_scaled<span class="sc">$</span>Income)</span>
+<span id="cb7-70"><a href="#cb7-70" aria-hidden="true" tabindex="-1"></a>validation_scaled<span class="sc">$</span>Family <span class="ot">&lt;-</span> <span class="fu">scale</span>(validation_scaled<span class="sc">$</span>Family)</span>
+<span id="cb7-71"><a href="#cb7-71" aria-hidden="true" tabindex="-1"></a>validation_scaled<span class="sc">$</span>CCAvg <span class="ot">&lt;-</span> <span class="fu">scale</span>(validation_scaled<span class="sc">$</span>CCAvg)</span>
+<span id="cb7-72"><a href="#cb7-72" aria-hidden="true" tabindex="-1"></a>validation_scaled<span class="sc">$</span>Mortgage <span class="ot">&lt;-</span> <span class="fu">scale</span>(validation_scaled<span class="sc">$</span>Mortgage)</span>
+<span id="cb7-73"><a href="#cb7-73" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-74"><a href="#cb7-74" aria-hidden="true" tabindex="-1"></a><span class="co"># Table Training after Scaling</span></span>
+<span id="cb7-75"><a href="#cb7-75" aria-hidden="true" tabindex="-1"></a><span class="fu">flextable</span>(<span class="fu">head</span>(training_scaled)) <span class="sc">%&gt;%</span> </span>
+<span id="cb7-76"><a href="#cb7-76" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fontsize</span>(<span class="at">size =</span> <span class="dv">7</span>, <span class="at">part =</span> <span class="st">&quot;all&quot;</span>)</span>
+<span id="cb7-77"><a href="#cb7-77" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-78"><a href="#cb7-78" aria-hidden="true" tabindex="-1"></a><span class="co"># KNN Model using class package</span></span>
+<span id="cb7-79"><a href="#cb7-79" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(class)</span>
+<span id="cb7-80"><a href="#cb7-80" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-81"><a href="#cb7-81" aria-hidden="true" tabindex="-1"></a>predictions <span class="ot">&lt;-</span> <span class="fu">knn</span>(<span class="at">train=</span>training_scaled,<span class="at">test =</span> validation_scaled, <span class="at">cl =</span> training_scaled<span class="sc">$</span><span class="st">`</span><span class="at">Personal Loan</span><span class="st">`</span>, <span class="at">k=</span><span class="dv">1</span>)</span>
+<span id="cb7-82"><a href="#cb7-82" aria-hidden="true" tabindex="-1"></a>predictions <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(predictions)</span>
+<span id="cb7-83"><a href="#cb7-83" aria-hidden="true" tabindex="-1"></a><span class="fu">levels</span>(predictions) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;Fail&quot;</span>,<span class="st">&quot;Success&quot;</span>)</span>
+<span id="cb7-84"><a href="#cb7-84" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-85"><a href="#cb7-85" aria-hidden="true" tabindex="-1"></a><span class="co"># Append Predictions to Validation Set</span></span>
+<span id="cb7-86"><a href="#cb7-86" aria-hidden="true" tabindex="-1"></a>validation<span class="sc">$</span>Predicted <span class="ot">&lt;-</span> predictions</span>
+<span id="cb7-87"><a href="#cb7-87" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-88"><a href="#cb7-88" aria-hidden="true" tabindex="-1"></a><span class="co"># Correct Factors of previous Validation</span></span>
+<span id="cb7-89"><a href="#cb7-89" aria-hidden="true" tabindex="-1"></a><span class="fu">levels</span>(validation<span class="sc">$</span><span class="st">`</span><span class="at">Personal Loan</span><span class="st">`</span>) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;Fail&quot;</span>,<span class="st">&quot;Success&quot;</span>)</span></code></pre></div>
+<center>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Table Validation after Predictions</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">flextable</span>(<span class="fu">head</span>(validation)) <span class="sc">%&gt;%</span> </span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fontsize</span>(<span class="at">size =</span> <span class="dv">7</span>, <span class="at">part =</span> <span class="st">&quot;all&quot;</span>)</span></code></pre></div>
+<template id="b0c52478-0d5e-47d2-b130-be1464d96a06"><style>
+.tabwid table{
+  border-spacing:0px !important;
+  border-collapse:collapse;
+  line-height:1;
+  margin-left:auto;
+  margin-right:auto;
+  border-width: 0;
+  display: table;
+  border-color: transparent;
+  caption-side: top;
+}
+.tabwid-caption-bottom table{
+  caption-side: bottom;
+}
+.tabwid_left table{
+  margin-left:0;
+}
+.tabwid_right table{
+  margin-right:0;
+}
+.tabwid td {
+    padding: 0;
+}
+.tabwid a {
+  text-decoration: none;
+}
+.tabwid thead {
+    background-color: transparent;
+}
+.tabwid tfoot {
+    background-color: transparent;
+}
+.tabwid table tr {
+background-color: transparent;
+}
+.katex-display {
+    margin: 0 0 !important;
+}
+</style><div class="tabwid"><style>.cl-ec37c766{}.cl-ec316cae{font-family:'Arial';font-size:7pt;font-weight:normal;font-style:normal;text-decoration:none;color:rgba(0, 0, 0, 1.00);background-color:transparent;}.cl-ec33df20{margin:0;text-align:right;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);padding-bottom:5pt;padding-top:5pt;padding-left:5pt;padding-right:5pt;line-height: 1;background-color:transparent;}.cl-ec33df21{margin:0;text-align:left;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);padding-bottom:5pt;padding-top:5pt;padding-left:5pt;padding-right:5pt;line-height: 1;background-color:transparent;}.cl-ec34063a{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 2pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-ec34063b{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 2pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-ec34063c{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-ec34063d{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-ec34063e{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-ec34063f{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}</style><table class="cl-ec37c766"><thead><tr style="overflow-wrap:break-word;"><td class="cl-ec34063a"><p class="cl-ec33df20"><span class="cl-ec316cae">Age</span></p></td><td class="cl-ec34063a"><p class="cl-ec33df20"><span class="cl-ec316cae">Experience</span></p></td><td class="cl-ec34063a"><p class="cl-ec33df20"><span class="cl-ec316cae">Income</span></p></td><td class="cl-ec34063a"><p class="cl-ec33df20"><span class="cl-ec316cae">Family</span></p></td><td class="cl-ec34063a"><p class="cl-ec33df20"><span class="cl-ec316cae">CCAvg</span></p></td><td class="cl-ec34063a"><p class="cl-ec33df20"><span class="cl-ec316cae">Mortgage</span></p></td><td class="cl-ec34063b"><p class="cl-ec33df21"><span class="cl-ec316cae">Personal Loan</span></p></td><td class="cl-ec34063a"><p class="cl-ec33df20"><span class="cl-ec316cae">Securities Account</span></p></td><td class="cl-ec34063a"><p class="cl-ec33df20"><span class="cl-ec316cae">CD Account</span></p></td><td class="cl-ec34063a"><p class="cl-ec33df20"><span class="cl-ec316cae">Online</span></p></td><td class="cl-ec34063a"><p class="cl-ec33df20"><span class="cl-ec316cae">CreditCard</span></p></td><td class="cl-ec34063a"><p class="cl-ec33df20"><span class="cl-ec316cae">Education_1</span></p></td><td class="cl-ec34063a"><p class="cl-ec33df20"><span class="cl-ec316cae">Education_2</span></p></td><td class="cl-ec34063a"><p class="cl-ec33df20"><span class="cl-ec316cae">Education_3</span></p></td><td class="cl-ec34063b"><p class="cl-ec33df21"><span class="cl-ec316cae">Predicted</span></p></td></tr></thead><tbody><tr style="overflow-wrap:break-word;"><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">35</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">9</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">100</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">1</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">2.7</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">2.7</span></p></td><td class="cl-ec34063d"><p class="cl-ec33df21"><span class="cl-ec316cae">Fail</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">1</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063d"><p class="cl-ec33df21"><span class="cl-ec316cae">Fail</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">37</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">13</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">29</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">4</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0.4</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0.4</span></p></td><td class="cl-ec34063d"><p class="cl-ec33df21"><span class="cl-ec316cae">Fail</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">1</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">1</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063d"><p class="cl-ec33df21"><span class="cl-ec316cae">Fail</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">53</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">27</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">72</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">2</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">1.5</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">1.5</span></p></td><td class="cl-ec34063d"><p class="cl-ec33df21"><span class="cl-ec316cae">Fail</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">1</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">1</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063d"><p class="cl-ec33df21"><span class="cl-ec316cae">Fail</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">50</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">24</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">22</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">1</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0.3</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0.3</span></p></td><td class="cl-ec34063d"><p class="cl-ec33df21"><span class="cl-ec316cae">Fail</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">1</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">1</span></p></td><td class="cl-ec34063d"><p class="cl-ec33df21"><span class="cl-ec316cae">Fail</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">35</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">10</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">81</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">3</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0.6</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0.6</span></p></td><td class="cl-ec34063d"><p class="cl-ec33df21"><span class="cl-ec316cae">Fail</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">1</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">1</span></p></td><td class="cl-ec34063c"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063d"><p class="cl-ec33df21"><span class="cl-ec316cae">Fail</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ec34063e"><p class="cl-ec33df20"><span class="cl-ec316cae">48</span></p></td><td class="cl-ec34063e"><p class="cl-ec33df20"><span class="cl-ec316cae">23</span></p></td><td class="cl-ec34063e"><p class="cl-ec33df20"><span class="cl-ec316cae">114</span></p></td><td class="cl-ec34063e"><p class="cl-ec33df20"><span class="cl-ec316cae">2</span></p></td><td class="cl-ec34063e"><p class="cl-ec33df20"><span class="cl-ec316cae">3.8</span></p></td><td class="cl-ec34063e"><p class="cl-ec33df20"><span class="cl-ec316cae">3.8</span></p></td><td class="cl-ec34063f"><p class="cl-ec33df21"><span class="cl-ec316cae">Fail</span></p></td><td class="cl-ec34063e"><p class="cl-ec33df20"><span class="cl-ec316cae">1</span></p></td><td class="cl-ec34063e"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063e"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063e"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063e"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063e"><p class="cl-ec33df20"><span class="cl-ec316cae">0</span></p></td><td class="cl-ec34063e"><p class="cl-ec33df20"><span class="cl-ec316cae">1</span></p></td><td class="cl-ec34063f"><p class="cl-ec33df21"><span class="cl-ec316cae">Fail</span></p></td></tr></tbody></table></div></template>
+<div class="flextable-shadow-host" id="8d26f6de-bf8d-4082-b094-76cb2f3d9def"></div>
+<script>
+var dest = document.getElementById("8d26f6de-bf8d-4082-b094-76cb2f3d9def");
+var template = document.getElementById("b0c52478-0d5e-47d2-b130-be1464d96a06");
+var caption = template.content.querySelector("caption");
+var fantome = dest.attachShadow({mode: 'open'});
+var templateContent = template.content;
+fantome.appendChild(templateContent);
+</script>
+
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Confusion Table</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>(Confusion_Data <span class="ot">&lt;-</span> <span class="fu">table</span>(validation<span class="sc">$</span><span class="st">`</span><span class="at">Personal Loan</span><span class="st">`</span>,validation<span class="sc">$</span>Predicted))</span></code></pre></div>
+<pre><code>##          
+##           Fail Success
+##   Fail    1766       1
+##   Success   12     171</code></pre>
+</center>
 </div>
 </div>
 </div>
@@ -1234,6 +1552,17 @@ Data into Training &amp; Test Sets in R (3 Methods)</a></p>
 
 <div class="col-xs-2">
 
+<div class="btn-toolbar">
+<div class="btn-group">
+<a class="btn btn-raised btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" href="#"><span>Code</span> <span class="caret"></span></a>
+<ul class="dropdown-menu" style="min-width: 50px;">
+
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+
+</ul>
+</div>
+</div>
 
 </div>
 </div>
