@@ -178,10 +178,6 @@ validation <- validation[,-c("ID","ZIP Code")]
 training$`Personal Loan` <- as.factor(training$`Personal Loan`) 
 validation$`Personal Loan` <- as.factor(validation$`Personal Loan`) 
 
-# Education As Factor
-training$Education <- as.factor(training$Education) 
-validation$Education <- as.factor(validation$Education) 
-
 # Education One-Hot Encoding
 Education_As_Dummy_Training <- model.matrix(~0+training$Education)
 Education_As_Dummy_Validation <- model.matrix(~0+validation$Education)
@@ -194,24 +190,8 @@ validation <- cbind(validation,Education_As_Dummy_Validation)
 validation <- validation[,-c("Education")]
 
 # Renaming Education
-
 training = training %>% rename( Education_1 = `training$Education1` , Education_2 = `training$Education2`, Education_3 = `training$Education3`)
 validation = validation %>% rename( Education_1 = `validation$Education1` , Education_2 = `validation$Education2`, Education_3 = `validation$Education3`)
-
-# As Numeric
-training$Age <- as.numeric(training$Age)
-training$Experience <- as.numeric(training$Experience)
-training$Income <- as.numeric(training$Income)
-training$Family <- as.numeric(training$Family)
-training$CCAvg <- as.numeric(training$CCAvg)
-training$Mortgage <- as.numeric(training$CCAvg)
-
-validation$Age <- as.numeric(validation$Age)
-validation$Experience <- as.numeric(validation$Experience)
-validation$Income <- as.numeric(validation$Income)
-validation$Family <- as.numeric(validation$Family)
-validation$CCAvg <- as.numeric(validation$CCAvg)
-validation$Mortgage <- as.numeric(validation$CCAvg)
 
 # Checking Structure
 str(training)
@@ -224,39 +204,12 @@ flextable(head(training)) %>%
 flextable(head(validation)) %>% 
   fontsize(size = 7, part = "all")
 
-# Duplicate Dataset Before Scaling
-training_scaled <- training
-validation_scaled <- validation
-
-# Scaling 
-training_scaled$Age <- scale(training_scaled$Age)
-training_scaled$Experience <- scale(training_scaled$Experience)
-training_scaled$Income <- scale(training_scaled$Income)
-training_scaled$Family <- scale(training_scaled$Family)
-training_scaled$CCAvg <- scale(training_scaled$CCAvg)
-training_scaled$Mortgage <- scale(training_scaled$Mortgage)
-
-validation_scaled$Age <- scale(validation_scaled$Age)
-validation_scaled$Experience <- scale(validation_scaled$Experience)
-validation_scaled$Income <- scale(validation_scaled$Income)
-validation_scaled$Family <- scale(validation_scaled$Family)
-validation_scaled$CCAvg <- scale(validation_scaled$CCAvg)
-validation_scaled$Mortgage <- scale(validation_scaled$Mortgage)
-
-# Table Training after Scaling
-flextable(head(training_scaled)) %>% 
-  fontsize(size = 7, part = "all")
-
 # KNN Model using class package
 library(class)
 
-predictions <- knn(train=training_scaled,test = validation_scaled, cl = training_scaled$`Personal Loan`, k=1)
+predictions <- knn(train=training,test = validation, cl = training$`Personal Loan`, k=1)
 predictions <- as.factor(predictions)
 levels(predictions) <- c("Fail","Success")
-
-# KNN Model on a specific customer not in Data
-
-
 
 # Append Predictions to Validation Set
 validation$Predicted <- predictions
@@ -264,23 +217,40 @@ validation$Predicted <- predictions
 # Correct Factors of previous Validation
 levels(validation$`Personal Loan`) <- c("Fail","Success")
 
+# KNN Model on a specific customer not in Data
+Customer_Test <- data.frame("Age"=40,"Experience"=10,"Income"=84,"Famiy"=2,"CCAvg"=2,"Mortgage"=0,"Securities Account"=0,"CD Account"=0,"Online"=1,"Credit Card"=1,"Education_1"=0,"Education_2"=1,"Education_3"=0, check.names=FALSE)
+
+# KNN Model on specific customer not in Data
+predictions_customer <- knn(train=training[,-c("Personal Loan")],test = Customer_Test, cl = training$`Personal Loan`, k=1)
+predictions_customer <- as.factor(predictions_customer)
+levels(predictions_customer) <- c("Fail","Success")
+
+# Append Predictions to Customer not in Data
+Customer_Test$Predicted <- predictions_customer
+
+# Correct Factors of previous Validation
+levels(Customer_Test$Predicted) <- c("Fail","Success")
+
 ```
 
 <center>
 
 ```{r 6, echo=TRUE}
 
-# Table Validation after Predictions
-flextable(head(validation)) %>% 
+# Table Customer after Predictions
+flextable(head(Customer_Test)) %>% 
   fontsize(size = 7, part = "all")
-
-# Confusion Table
-(Confusion_Data <- table(validation$`Personal Loan`,validation$Predicted))
 
 ```
 
 </center>
 
+```{r 7, echo=TRUE}
+
+
+
+
+```
 
 
 
