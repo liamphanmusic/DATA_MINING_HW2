@@ -298,7 +298,7 @@ print(paste("Best K for Highest Accuracy is",highest_K))
 
 </center>
 
-### c. Show the confusion matrix for the validation data that results from using best K
+### c. Show the confusion matrix for the validation data that results from using best Κ
 
 <center>
 
@@ -409,7 +409,7 @@ flextable(head(Customer_Test_2)) %>%
 
 ```
 
-## e. Repartition the data | 50%-30%-20%
+### e. Repartition the data | 50%-30%-20%
 
 ```{r 11, echo=TRUE}
 
@@ -556,6 +556,8 @@ draw_confusion_matrix(Confusion_Matrix_k_New2)
 
 
 # <span style="color: #1c6155;">Exercise 3.</span>
+
+## 
 
 
 
