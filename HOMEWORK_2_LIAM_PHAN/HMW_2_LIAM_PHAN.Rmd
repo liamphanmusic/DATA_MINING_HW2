@@ -557,9 +557,64 @@ draw_confusion_matrix(Confusion_Matrix_k_New2)
 
 # <span style="color: #1c6155;">Exercise 3.</span>
 
-## 
+## 8.1 Personal Loan Acceptance
+
+### Partition the data into training (60%) and validation (40%) sets
+
+```{r a1, echo=TRUE}
+
+UniversalBank2 <- fread("DATA/UniversalBank.csv")
+
+# Setting Seed
+set.seed(1)
+
+# Splitting Training and Validation 
+sample2 <- sample(c(TRUE, FALSE), nrow(UniversalBank2), replace=TRUE, prob=c(0.6,0.4))
+training_8  <- UniversalBank2[sample2, ]
+validation_8   <- UniversalBank2[!sample2, ]
+
+# Checking if proportions are right
+training_8_prop <- (nrow(training_8)/nrow(UniversalBank2))*100
+validation_8_prop <- (nrow(validation_8)/nrow(UniversalBank2))*100
+
+paste(training_8_prop,"% In Training",validation_8_prop,"% In Validation")
+
+```
+
+### a. Pivot Table
 
 
+```{r a2, echo=TRUE}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```
 
 # <span style="color: #1c6155;">References</span>
 
