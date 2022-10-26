@@ -22,7 +22,7 @@ cat("\014") # clean console
 
 ## Loading Packages
 
-```{r 1, warning=FALSE, message=FALSE }
+```{r 1, warning=FALSE, message=FALSE}
 
 library(data.table) # Efficient Dataframe 
 library(lubridate) # For Dates 
@@ -170,6 +170,9 @@ Perform a Κ-NN Classification with all predictors except ID and ZIP code using 
 
 ```{r 5, echo=TRUE, results='hide'}
 
+# Setting Seed
+set.seed(1)
+
 # Removing Some Predictors
 training <- training[,-c("ID","ZIP Code")]
 validation <- validation[,-c("ID","ZIP Code")]
@@ -197,14 +200,30 @@ validation <- validation[,-c("Education")]
 training = training %>% rename( Education_1 = `training$Education1` , Education_2 = `training$Education2`, Education_3 = `training$Education3`)
 validation = validation %>% rename( Education_1 = `validation$Education1` , Education_2 = `validation$Education2`, Education_3 = `validation$Education3`)
 
+# Preprocess for Data Normalization
+library(caret)
+
+training_norm <- training
+validation_norm <- validation
+
+training_norm_s <- training[,-c("Personal Loan")]
+
+norm_values <- preProcess(training_norm_s,method = c("center","scale"))
+
+training_norm <- predict(norm_values,training)
+validation_norm <- predict(norm_values,validation)
+
 # KNN Model using class package
 library(class)
 
-# KNN Model on a specific customer not in Data
-Customer_Test <- data.frame("Age"=40,"Experience"=10,"Income"=84,"Famiy"=2,"CCAvg"=2,"Mortgage"=0,"Securities Account"=0,"CD Account"=0,"Online"=1,"Credit Card"=1,"Education_1"=0,"Education_2"=1,"Education_3"=0, check.names=FALSE)
+# Data frame for a specific customer not in Data
+Customer_Test <- data.frame("Age"=40,"Experience"=10,"Income"=84,"Family"=2,"CCAvg"=2,"Mortgage"=0,"Securities Account"=0,"CD Account"=0,"Online"=1,"CreditCard"=1,"Education_1"=0,"Education_2"=1,"Education_3"=0, check.names=FALSE)
+
+# Preprocess the Customer New Data
+Customer_Test_norm <- predict(norm_values, Customer_Test)
 
 ## KNN Training for Customer
-predictions_customer <- knn(train=training[,-c("Personal Loan")],test = Customer_Test, cl = training$`Personal Loan`, k=1)
+predictions_customer <- knn(train=training_norm[,-c("Personal Loan")],test = Customer_Test_norm, cl = training_norm$`Personal Loan`, k=1)
 
 predictions_customer <- as.factor(predictions_customer)
 
@@ -234,7 +253,12 @@ flextable(head(Customer_Test)) %>%
 
 ### b. What is the Choice of Κ that balances between overfitting and ignoring the predictor information?
 
+<center>
+
 ```{r 7, echo=TRUE}
+
+# Setting Seed
+set.seed(1)
 
 # Load Caret 
 library(caret)
@@ -248,7 +272,7 @@ accuracy.df <- data.frame(k=seq(1,iterations,1),accuracy=rep(0,iterations))
 # Compute K-NN for different k on validation
 for(i in 1:iterations){
   # Testing K-NN
-  knn.prediction <- knn(train = training[,-c("Personal Loan")], test=validation[,-c("Personal Loan")] , cl=training$`Personal Loan`, k=iterations)
+  knn.prediction <- knn(train = training_norm[,-c("Personal Loan")], test=validation_norm[,-c("Personal Loan")] , cl=training_norm$`Personal Loan`, k=iterations)
   # Storing into the accuracy.df results
   accuracy.df[i,2] <- confusionMatrix(knn.prediction, validation$`Personal Loan`)$overall[1]
 }
@@ -272,22 +296,29 @@ print(paste("Best K for Highest Accuracy is",highest_K))
 
 ```
 
+</center>
+
 ### c. Show the confusion matrix for the validation data that results from using best K
+
+<center>
 
 ```{r 8, echo=TRUE}
 
-# Computing Confusion Matrix with K=3
-predictions_k3 <- knn(train=training[,-c("Personal Loan")],test = validation[,-c("Personal Loan")], cl = training$`Personal Loan`, k=3)
+# Setting Seed
+set.seed(1)
+
+# Computing Confusion Matrix with Best K
+predictions_k <- knn(train=training_norm[,-c("Personal Loan")],test = validation_norm[,-c("Personal Loan")], cl = training_norm$`Personal Loan`, highest_K)
 
 # As Factor Predictions
-predictions_k3 <- as.factor(predictions_k3)
+predictions_k <- as.factor(predictions_k)
 
 # Relabel 0 and 1 to "Success" and "Fail
-levels(predictions_k3)<- c("Fail","Success")
+levels(predictions_k)<- c("Fail","Success")
 levels(validation$`Personal Loan`) <- c("Fail","Success")
 
 # Confusion Matrix
-Confusion_Matrix_k3 <- confusionMatrix(data = predictions_k3, reference = validation$`Personal Loan`)
+Confusion_Matrix_k <- confusionMatrix(data = predictions_k, reference = validation$`Personal Loan`)
 
 # Plot
 draw_confusion_matrix <- function(cm) {
@@ -335,9 +366,14 @@ draw_confusion_matrix <- function(cm) {
   text(70, 35, names(cm$overall[2]), cex=1.5, font=2)
   text(70, 20, round(as.numeric(cm$overall[2]), 3), cex=1.4)
 }  
-draw_confusion_matrix(Confusion_Matrix_k3)
+
+
+#Plot the Confusion Matrix
+draw_confusion_matrix(Confusion_Matrix_k)
 
 ```
+
+</center>
 
 ### d. Consider the following customer:
 
@@ -345,11 +381,17 @@ draw_confusion_matrix(Confusion_Matrix_k3)
 
 ```{r 9, echo=TRUE}
 
+# Setting Seed
+set.seed(1)
+
 # KNN Model on a specific customer not in Data
-Customer_Test_2 <- data.frame("Age"=40,"Experience"=10,"Income"=84,"Famiy"=2,"CCAvg"=2,"Mortgage"=0,"Securities Account"=0,"CD Account"=0,"Online"=1,"Credit Card"=1,"Education_1"=0,"Education_2"=1,"Education_3"=0, check.names=FALSE)
+Customer_Test_2 <- data.frame("Age"=40,"Experience"=10,"Income"=84,"Family"=2,"CCAvg"=2,"Mortgage"=0,"Securities Account"=0,"CD Account"=0,"Online"=1,"CreditCard"=1,"Education_1"=0,"Education_2"=1,"Education_3"=0, check.names=FALSE)
+
+# Preprocess the Customer New Data
+Customer_Test_2_norm <- predict(norm_values, Customer_Test_2)
 
 ## KNN Training for Customer
-predictions_customer_2 <- knn(train=training[,-c("Personal Loan")],test = Customer_Test_2, cl = training$`Personal Loan`, k=highest_K)
+predictions_customer_2 <- knn(train=training_norm[,-c("Personal Loan")],test = Customer_Test_2_norm, cl = training_norm$`Personal Loan`, k=highest_K)
 
 predictions_customer_2 <- as.factor(predictions_customer_2)
 levels(predictions_customer_2) <- c("Fail","Succes")
@@ -369,9 +411,148 @@ flextable(head(Customer_Test_2)) %>%
 
 ## e. Repartition the data | 50%-30%-20%
 
+```{r 11, echo=TRUE}
+
+# Setting Seed
+set.seed(1)
+
+# Splitting Training and Validation and Test
+splitting <- sample(1:3,size=nrow(UniversalBank1),replace=TRUE,prob=c(0.5,0.3,0.2))
+train <- UniversalBank1[splitting==1,]
+valid <- UniversalBank1[splitting==2,]
+test <- UniversalBank1[splitting==3,]
+
+# Checking if proportions are right
+Prop_train <- (nrow(train)/nrow(UniversalBank1))*100
+Prop_valid <- (nrow(valid)/nrow(UniversalBank1))*100
+Prop_test <- (nrow(test)/nrow(UniversalBank1))*100
+
+# Print Proportion
+paste(Prop_train,"% In Training",Prop_valid,"% In Validation",Prop_test,"% In Test")
+
+```
+
+```{r 12, echo=TRUE}
+
+# Setting Seed
+set.seed(1)
+
+# Removing Some Predictors
+train <- train[,-c("ID","ZIP Code")]
+valid <- valid[,-c("ID","ZIP Code")]
+test <- test[,-c("ID","ZIP Code")]
+
+# Target Variable As Factor
+train$`Personal Loan` <- as.factor(train$`Personal Loan`) 
+valid$`Personal Loan` <- as.factor(valid$`Personal Loan`) 
+test$`Personal Loan` <- as.factor(test$`Personal Loan`) 
+
+# Education As Factor
+train$Education <- as.factor(train$Education) 
+valid$Education <- as.factor(valid$Education) 
+test$Education <- as.factor(test$Education) 
+
+# Education One-Hot Encoding
+Education_As_Dummy_Train <- model.matrix(~0+train$Education)
+Education_As_Dummy_Valid <- model.matrix(~0+valid$Education)
+Education_As_Dummy_Test <- model.matrix(~0+test$Education)
+
+# Append to Training and Validation Sets
+train <- cbind(train,Education_As_Dummy_Train)
+train <- train[,-c("Education")]
+
+valid <- cbind(valid,Education_As_Dummy_Valid)
+valid <- valid[,-c("Education")]
+
+test <- cbind(test,Education_As_Dummy_Test)
+test <- test[,-c("Education")]
+
+# Renaming Education
+train = train %>% rename( Education_1 = `train$Education1` , Education_2 = `train$Education2`, Education_3 = `train$Education3`)
+valid = valid %>% rename( Education_1 = `valid$Education1` , Education_2 = `valid$Education2`, Education_3 = `valid$Education3`)
+test = test %>% rename( Education_1 = `test$Education1` , Education_2 = `test$Education2`, Education_3 = `test$Education3`)
+
+# Preprocess for Data Normalization
+library(caret)
+
+train_norm <- train
+validn_norm <- valid
+test_norm <- test
+
+train_norm_s <- train[,-c("Personal Loan")]
+
+norm_values_2 <- preProcess(train_norm_s,method = c("center","scale"))
+
+train_norm <- predict(norm_values_2,train)
+valid_norm <- predict(norm_values_2,valid)
+test_norm <- predict(norm_values_2,test)
 
 
+```
 
+<center>
+
+> Confusion Matrix for Train VS Valid
+
+```{r 13, echo=TRUE}
+
+# Train VS Valid
+
+# Setting Seed
+set.seed(1)
+
+# Computing Confusion Matrix with Best K
+predictions_k_new <- knn(train=train_norm[,-c("Personal Loan")],test = valid_norm[,-c("Personal Loan")], cl = train_norm$`Personal Loan`, highest_K)
+
+# As Factor Predictions
+predictions_k_new <- as.factor(predictions_k_new)
+
+# Relabel 0 and 1 to "Success" and "Fail
+levels(predictions_k_new)<- c("Fail","Success")
+levels(valid$`Personal Loan`) <- c("Fail","Success")
+
+# Confusion Matrix
+Confusion_Matrix_k_New <- confusionMatrix(data = predictions_k_new, reference = valid$`Personal Loan`)
+
+#Plot the Confusion Matrix
+draw_confusion_matrix(Confusion_Matrix_k_New)
+
+
+```
+
+</center>
+
+
+<center>
+
+> Confusion Matrix for Train VS Test
+
+```{r 14, echo=TRUE}
+
+# Train VS Test
+
+# Setting Seed
+set.seed(1)
+
+# Computing Confusion Matrix with Best K
+predictions_k_new2 <- knn(train=train_norm[,-c("Personal Loan")],test = test_norm[,-c("Personal Loan")], cl = train_norm$`Personal Loan`, highest_K)
+
+# As Factor Predictions
+predictions_k_new2 <- as.factor(predictions_k_new2)
+
+# Relabel 0 and 1 to "Success" and "Fail
+levels(predictions_k_new2)<- c("Fail","Success")
+levels(test$`Personal Loan`) <- c("Fail","Success")
+
+# Confusion Matrix
+Confusion_Matrix_k_New2 <- confusionMatrix(data = predictions_k_new2, reference = test$`Personal Loan`)
+
+#Plot the Confusion Matrix
+draw_confusion_matrix(Confusion_Matrix_k_New2)
+
+```
+
+</center>
 
 
 # <span style="color: #1c6155;">Exercise 3.</span>
