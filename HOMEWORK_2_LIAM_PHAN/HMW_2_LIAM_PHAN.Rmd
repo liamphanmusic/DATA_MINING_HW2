@@ -583,30 +583,99 @@ paste(training_8_prop,"% In Training",validation_8_prop,"% In Validation")
 
 ### a. Pivot Table
 
+<center>
 
 ```{r a2, echo=TRUE}
 
+library(pivottabler)
 
+# Duplicata of Training Data for Pivot Data
+pivot_data <- training_8
 
+# As Factor
+pivot_data$Online <- factor(pivot_data$Online,levels = c(0,1),labels=c("Inactive Online","Active Online"))
+pivot_data$CreditCard <- factor(pivot_data$CreditCard,levels = c(0,1),labels=c("No Credit Card","Credit Card"))
+pivot_data$`Personal Loan` <- factor(pivot_data$`Personal Loan`,levels = c(0,1),labels=c("No Personal Loan","Personal Loan"))
 
+# Pivot Table
+pt <- PivotTable$new()
+pt$addData(pivot_data) 
+pt$addColumnDataGroups("CreditCard")
+pt$addRowDataGroups("Personal Loan")
+pt$addRowDataGroups("Online")
+pt$defineCalculation(calculationName="Total", summariseExpression="n()")
+pt$renderPivot()
 
+```
 
+</center>
 
+### b. Probability Customer who owns a bank credit acrd and is actively using online banking services accept the loan offer?
 
+> Using Bayes Theorem
 
+$$P(Loan=1 | CC=1 \cap Online=1) =  \\ \dfrac{P(Loan=1 \cap CC=1 \cap Online=1)}{P(CC=1 \cap Online=1)} = \\ \dfrac{\dfrac{54}{3050}}{\dfrac{506+54}{3050}} =\dfrac{54}{560} = 9.642 \% $$
 
+> Thus, there is 9.642% probability that this kind of customer would accept the loan offer.
 
+### c. Pivot Table in 2 Versions
 
+<center>
 
+```{r a4, echo=TRUE}
 
+library(pivottabler)
 
+# Pivot Table 1
+pt1 <- PivotTable$new()
+pt1$addData(pivot_data) 
+pt1$addColumnDataGroups("Online")
+pt1$addRowDataGroups("Personal Loan")
+pt1$defineCalculation(calculationName="Total", summariseExpression="n()")
+pt1$renderPivot()
 
+# Pivot Table 1
+pt2 <- PivotTable$new()
+pt2$addData(pivot_data) 
+pt2$addColumnDataGroups("CreditCard")
+pt2$addRowDataGroups("Personal Loan")
+pt2$defineCalculation(calculationName="Total", summariseExpression="n()")
+pt2$renderPivot()
 
+```
 
+</center>
 
+### d. Compute the following quantities
 
+#### i. 
 
+$$P (CC=1 | Loan=1) = \\ \dfrac{P (CC=1 \cap Loan=1)}{P (Loan=1)} = \\ \dfrac{95}{297} = 31.99 \%  $$
 
+#### ii.
+
+$$P (Online=1 | Loan=1) = \\ \dfrac{P (Online=1 \cap Loan=1)}{P (Loan=1)} = \\ \dfrac{188}{297} = 63.30 \%$$
+
+#### iii.
+
+$$P (Loan=1) =  \dfrac{297}{3050} = 9.74 \%$$
+
+#### iv.
+
+$$P (CC=1 | Loan=0) = \\ \dfrac{P (CC=1 \cap Loan=0)}{P (Loan=0)} = \\ \dfrac{827}{2753} = 30.04 \%$$
+
+#### v.
+
+$$P (Online=1 | Loan=0) = \\ \dfrac{P (Online=1 \cap Loan=0)}{P (Loan=0)} = \\ \dfrac{1626}{2753} = 59.06 \%$$
+
+#### vi.
+
+$$P (Loan=0) = \dfrac{2753}{3050} =  90.26\%$$
+### e. Compute naive Bayes Probability 
+
+$$P(Loan=1|CC=1,Online=1)$$
+
+```{r a5, echo=TRUE}
 
 
 
@@ -615,6 +684,11 @@ paste(training_8_prop,"% In Training",validation_8_prop,"% In Validation")
 
 
 ```
+
+### f.
+
+
+### g.
 
 # <span style="color: #1c6155;">References</span>
 

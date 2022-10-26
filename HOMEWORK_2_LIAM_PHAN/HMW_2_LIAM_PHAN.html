@@ -967,6 +967,944 @@ overflow: auto;
 -ms-overflow-style: auto;
 }
 </style>
+        <script>(function() {
+  // If window.HTMLWidgets is already defined, then use it; otherwise create a
+  // new object. This allows preceding code to set options that affect the
+  // initialization process (though none currently exist).
+  window.HTMLWidgets = window.HTMLWidgets || {};
+
+  // See if we're running in a viewer pane. If not, we're in a web browser.
+  var viewerMode = window.HTMLWidgets.viewerMode =
+      /\bviewer_pane=1\b/.test(window.location);
+
+  // See if we're running in Shiny mode. If not, it's a static document.
+  // Note that static widgets can appear in both Shiny and static modes, but
+  // obviously, Shiny widgets can only appear in Shiny apps/documents.
+  var shinyMode = window.HTMLWidgets.shinyMode =
+      typeof(window.Shiny) !== "undefined" && !!window.Shiny.outputBindings;
+
+  // We can't count on jQuery being available, so we implement our own
+  // version if necessary.
+  function querySelectorAll(scope, selector) {
+    if (typeof(jQuery) !== "undefined" && scope instanceof jQuery) {
+      return scope.find(selector);
+    }
+    if (scope.querySelectorAll) {
+      return scope.querySelectorAll(selector);
+    }
+  }
+
+  function asArray(value) {
+    if (value === null)
+      return [];
+    if ($.isArray(value))
+      return value;
+    return [value];
+  }
+
+  // Implement jQuery's extend
+  function extend(target /*, ... */) {
+    if (arguments.length == 1) {
+      return target;
+    }
+    for (var i = 1; i < arguments.length; i++) {
+      var source = arguments[i];
+      for (var prop in source) {
+        if (source.hasOwnProperty(prop)) {
+          target[prop] = source[prop];
+        }
+      }
+    }
+    return target;
+  }
+
+  // IE8 doesn't support Array.forEach.
+  function forEach(values, callback, thisArg) {
+    if (values.forEach) {
+      values.forEach(callback, thisArg);
+    } else {
+      for (var i = 0; i < values.length; i++) {
+        callback.call(thisArg, values[i], i, values);
+      }
+    }
+  }
+
+  // Replaces the specified method with the return value of funcSource.
+  //
+  // Note that funcSource should not BE the new method, it should be a function
+  // that RETURNS the new method. funcSource receives a single argument that is
+  // the overridden method, it can be called from the new method. The overridden
+  // method can be called like a regular function, it has the target permanently
+  // bound to it so "this" will work correctly.
+  function overrideMethod(target, methodName, funcSource) {
+    var superFunc = target[methodName] || function() {};
+    var superFuncBound = function() {
+      return superFunc.apply(target, arguments);
+    };
+    target[methodName] = funcSource(superFuncBound);
+  }
+
+  // Add a method to delegator that, when invoked, calls
+  // delegatee.methodName. If there is no such method on
+  // the delegatee, but there was one on delegator before
+  // delegateMethod was called, then the original version
+  // is invoked instead.
+  // For example:
+  //
+  // var a = {
+  //   method1: function() { console.log('a1'); }
+  //   method2: function() { console.log('a2'); }
+  // };
+  // var b = {
+  //   method1: function() { console.log('b1'); }
+  // };
+  // delegateMethod(a, b, "method1");
+  // delegateMethod(a, b, "method2");
+  // a.method1();
+  // a.method2();
+  //
+  // The output would be "b1", "a2".
+  function delegateMethod(delegator, delegatee, methodName) {
+    var inherited = delegator[methodName];
+    delegator[methodName] = function() {
+      var target = delegatee;
+      var method = delegatee[methodName];
+
+      // The method doesn't exist on the delegatee. Instead,
+      // call the method on the delegator, if it exists.
+      if (!method) {
+        target = delegator;
+        method = inherited;
+      }
+
+      if (method) {
+        return method.apply(target, arguments);
+      }
+    };
+  }
+
+  // Implement a vague facsimilie of jQuery's data method
+  function elementData(el, name, value) {
+    if (arguments.length == 2) {
+      return el["htmlwidget_data_" + name];
+    } else if (arguments.length == 3) {
+      el["htmlwidget_data_" + name] = value;
+      return el;
+    } else {
+      throw new Error("Wrong number of arguments for elementData: " +
+        arguments.length);
+    }
+  }
+
+  // http://stackoverflow.com/questions/3446170/escape-string-for-use-in-javascript-regex
+  function escapeRegExp(str) {
+    return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
+  }
+
+  function hasClass(el, className) {
+    var re = new RegExp("\\b" + escapeRegExp(className) + "\\b");
+    return re.test(el.className);
+  }
+
+  // elements - array (or array-like object) of HTML elements
+  // className - class name to test for
+  // include - if true, only return elements with given className;
+  //   if false, only return elements *without* given className
+  function filterByClass(elements, className, include) {
+    var results = [];
+    for (var i = 0; i < elements.length; i++) {
+      if (hasClass(elements[i], className) == include)
+        results.push(elements[i]);
+    }
+    return results;
+  }
+
+  function on(obj, eventName, func) {
+    if (obj.addEventListener) {
+      obj.addEventListener(eventName, func, false);
+    } else if (obj.attachEvent) {
+      obj.attachEvent(eventName, func);
+    }
+  }
+
+  function off(obj, eventName, func) {
+    if (obj.removeEventListener)
+      obj.removeEventListener(eventName, func, false);
+    else if (obj.detachEvent) {
+      obj.detachEvent(eventName, func);
+    }
+  }
+
+  // Translate array of values to top/right/bottom/left, as usual with
+  // the "padding" CSS property
+  // https://developer.mozilla.org/en-US/docs/Web/CSS/padding
+  function unpackPadding(value) {
+    if (typeof(value) === "number")
+      value = [value];
+    if (value.length === 1) {
+      return {top: value[0], right: value[0], bottom: value[0], left: value[0]};
+    }
+    if (value.length === 2) {
+      return {top: value[0], right: value[1], bottom: value[0], left: value[1]};
+    }
+    if (value.length === 3) {
+      return {top: value[0], right: value[1], bottom: value[2], left: value[1]};
+    }
+    if (value.length === 4) {
+      return {top: value[0], right: value[1], bottom: value[2], left: value[3]};
+    }
+  }
+
+  // Convert an unpacked padding object to a CSS value
+  function paddingToCss(paddingObj) {
+    return paddingObj.top + "px " + paddingObj.right + "px " + paddingObj.bottom + "px " + paddingObj.left + "px";
+  }
+
+  // Makes a number suitable for CSS
+  function px(x) {
+    if (typeof(x) === "number")
+      return x + "px";
+    else
+      return x;
+  }
+
+  // Retrieves runtime widget sizing information for an element.
+  // The return value is either null, or an object with fill, padding,
+  // defaultWidth, defaultHeight fields.
+  function sizingPolicy(el) {
+    var sizingEl = document.querySelector("script[data-for='" + el.id + "'][type='application/htmlwidget-sizing']");
+    if (!sizingEl)
+      return null;
+    var sp = JSON.parse(sizingEl.textContent || sizingEl.text || "{}");
+    if (viewerMode) {
+      return sp.viewer;
+    } else {
+      return sp.browser;
+    }
+  }
+
+  // @param tasks Array of strings (or falsy value, in which case no-op).
+  //   Each element must be a valid JavaScript expression that yields a
+  //   function. Or, can be an array of objects with "code" and "data"
+  //   properties; in this case, the "code" property should be a string
+  //   of JS that's an expr that yields a function, and "data" should be
+  //   an object that will be added as an additional argument when that
+  //   function is called.
+  // @param target The object that will be "this" for each function
+  //   execution.
+  // @param args Array of arguments to be passed to the functions. (The
+  //   same arguments will be passed to all functions.)
+  function evalAndRun(tasks, target, args) {
+    if (tasks) {
+      forEach(tasks, function(task) {
+        var theseArgs = args;
+        if (typeof(task) === "object") {
+          theseArgs = theseArgs.concat([task.data]);
+          task = task.code;
+        }
+        var taskFunc = tryEval(task);
+        if (typeof(taskFunc) !== "function") {
+          throw new Error("Task must be a function! Source:\n" + task);
+        }
+        taskFunc.apply(target, theseArgs);
+      });
+    }
+  }
+
+  // Attempt eval() both with and without enclosing in parentheses.
+  // Note that enclosing coerces a function declaration into
+  // an expression that eval() can parse
+  // (otherwise, a SyntaxError is thrown)
+  function tryEval(code) {
+    var result = null;
+    try {
+      result = eval("(" + code + ")");
+    } catch(error) {
+      if (!(error instanceof SyntaxError)) {
+        throw error;
+      }
+      try {
+        result = eval(code);
+      } catch(e) {
+        if (e instanceof SyntaxError) {
+          throw error;
+        } else {
+          throw e;
+        }
+      }
+    }
+    return result;
+  }
+
+  function initSizing(el) {
+    var sizing = sizingPolicy(el);
+    if (!sizing)
+      return;
+
+    var cel = document.getElementById("htmlwidget_container");
+    if (!cel)
+      return;
+
+    if (typeof(sizing.padding) !== "undefined") {
+      document.body.style.margin = "0";
+      document.body.style.padding = paddingToCss(unpackPadding(sizing.padding));
+    }
+
+    if (sizing.fill) {
+      document.body.style.overflow = "hidden";
+      document.body.style.width = "100%";
+      document.body.style.height = "100%";
+      document.documentElement.style.width = "100%";
+      document.documentElement.style.height = "100%";
+      if (cel) {
+        cel.style.position = "absolute";
+        var pad = unpackPadding(sizing.padding);
+        cel.style.top = pad.top + "px";
+        cel.style.right = pad.right + "px";
+        cel.style.bottom = pad.bottom + "px";
+        cel.style.left = pad.left + "px";
+        el.style.width = "100%";
+        el.style.height = "100%";
+      }
+
+      return {
+        getWidth: function() { return cel.offsetWidth; },
+        getHeight: function() { return cel.offsetHeight; }
+      };
+
+    } else {
+      el.style.width = px(sizing.width);
+      el.style.height = px(sizing.height);
+
+      return {
+        getWidth: function() { return el.offsetWidth; },
+        getHeight: function() { return el.offsetHeight; }
+      };
+    }
+  }
+
+  // Default implementations for methods
+  var defaults = {
+    find: function(scope) {
+      return querySelectorAll(scope, "." + this.name);
+    },
+    renderError: function(el, err) {
+      var $el = $(el);
+
+      this.clearError(el);
+
+      // Add all these error classes, as Shiny does
+      var errClass = "shiny-output-error";
+      if (err.type !== null) {
+        // use the classes of the error condition as CSS class names
+        errClass = errClass + " " + $.map(asArray(err.type), function(type) {
+          return errClass + "-" + type;
+        }).join(" ");
+      }
+      errClass = errClass + " htmlwidgets-error";
+
+      // Is el inline or block? If inline or inline-block, just display:none it
+      // and add an inline error.
+      var display = $el.css("display");
+      $el.data("restore-display-mode", display);
+
+      if (display === "inline" || display === "inline-block") {
+        $el.hide();
+        if (err.message !== "") {
+          var errorSpan = $("<span>").addClass(errClass);
+          errorSpan.text(err.message);
+          $el.after(errorSpan);
+        }
+      } else if (display === "block") {
+        // If block, add an error just after the el, set visibility:none on the
+        // el, and position the error to be on top of the el.
+        // Mark it with a unique ID and CSS class so we can remove it later.
+        $el.css("visibility", "hidden");
+        if (err.message !== "") {
+          var errorDiv = $("<div>").addClass(errClass).css("position", "absolute")
+            .css("top", el.offsetTop)
+            .css("left", el.offsetLeft)
+            // setting width can push out the page size, forcing otherwise
+            // unnecessary scrollbars to appear and making it impossible for
+            // the element to shrink; so use max-width instead
+            .css("maxWidth", el.offsetWidth)
+            .css("height", el.offsetHeight);
+          errorDiv.text(err.message);
+          $el.after(errorDiv);
+
+          // Really dumb way to keep the size/position of the error in sync with
+          // the parent element as the window is resized or whatever.
+          var intId = setInterval(function() {
+            if (!errorDiv[0].parentElement) {
+              clearInterval(intId);
+              return;
+            }
+            errorDiv
+              .css("top", el.offsetTop)
+              .css("left", el.offsetLeft)
+              .css("maxWidth", el.offsetWidth)
+              .css("height", el.offsetHeight);
+          }, 500);
+        }
+      }
+    },
+    clearError: function(el) {
+      var $el = $(el);
+      var display = $el.data("restore-display-mode");
+      $el.data("restore-display-mode", null);
+
+      if (display === "inline" || display === "inline-block") {
+        if (display)
+          $el.css("display", display);
+        $(el.nextSibling).filter(".htmlwidgets-error").remove();
+      } else if (display === "block"){
+        $el.css("visibility", "inherit");
+        $(el.nextSibling).filter(".htmlwidgets-error").remove();
+      }
+    },
+    sizing: {}
+  };
+
+  // Called by widget bindings to register a new type of widget. The definition
+  // object can contain the following properties:
+  // - name (required) - A string indicating the binding name, which will be
+  //   used by default as the CSS classname to look for.
+  // - initialize (optional) - A function(el) that will be called once per
+  //   widget element; if a value is returned, it will be passed as the third
+  //   value to renderValue.
+  // - renderValue (required) - A function(el, data, initValue) that will be
+  //   called with data. Static contexts will cause this to be called once per
+  //   element; Shiny apps will cause this to be called multiple times per
+  //   element, as the data changes.
+  window.HTMLWidgets.widget = function(definition) {
+    if (!definition.name) {
+      throw new Error("Widget must have a name");
+    }
+    if (!definition.type) {
+      throw new Error("Widget must have a type");
+    }
+    // Currently we only support output widgets
+    if (definition.type !== "output") {
+      throw new Error("Unrecognized widget type '" + definition.type + "'");
+    }
+    // TODO: Verify that .name is a valid CSS classname
+
+    // Support new-style instance-bound definitions. Old-style class-bound
+    // definitions have one widget "object" per widget per type/class of
+    // widget; the renderValue and resize methods on such widget objects
+    // take el and instance arguments, because the widget object can't
+    // store them. New-style instance-bound definitions have one widget
+    // object per widget instance; the definition that's passed in doesn't
+    // provide renderValue or resize methods at all, just the single method
+    //   factory(el, width, height)
+    // which returns an object that has renderValue(x) and resize(w, h).
+    // This enables a far more natural programming style for the widget
+    // author, who can store per-instance state using either OO-style
+    // instance fields or functional-style closure variables (I guess this
+    // is in contrast to what can only be called C-style pseudo-OO which is
+    // what we required before).
+    if (definition.factory) {
+      definition = createLegacyDefinitionAdapter(definition);
+    }
+
+    if (!definition.renderValue) {
+      throw new Error("Widget must have a renderValue function");
+    }
+
+    // For static rendering (non-Shiny), use a simple widget registration
+    // scheme. We also use this scheme for Shiny apps/documents that also
+    // contain static widgets.
+    window.HTMLWidgets.widgets = window.HTMLWidgets.widgets || [];
+    // Merge defaults into the definition; don't mutate the original definition.
+    var staticBinding = extend({}, defaults, definition);
+    overrideMethod(staticBinding, "find", function(superfunc) {
+      return function(scope) {
+        var results = superfunc(scope);
+        // Filter out Shiny outputs, we only want the static kind
+        return filterByClass(results, "html-widget-output", false);
+      };
+    });
+    window.HTMLWidgets.widgets.push(staticBinding);
+
+    if (shinyMode) {
+      // Shiny is running. Register the definition with an output binding.
+      // The definition itself will not be the output binding, instead
+      // we will make an output binding object that delegates to the
+      // definition. This is because we foolishly used the same method
+      // name (renderValue) for htmlwidgets definition and Shiny bindings
+      // but they actually have quite different semantics (the Shiny
+      // bindings receive data that includes lots of metadata that it
+      // strips off before calling htmlwidgets renderValue). We can't
+      // just ignore the difference because in some widgets it's helpful
+      // to call this.renderValue() from inside of resize(), and if
+      // we're not delegating, then that call will go to the Shiny
+      // version instead of the htmlwidgets version.
+
+      // Merge defaults with definition, without mutating either.
+      var bindingDef = extend({}, defaults, definition);
+
+      // This object will be our actual Shiny binding.
+      var shinyBinding = new Shiny.OutputBinding();
+
+      // With a few exceptions, we'll want to simply use the bindingDef's
+      // version of methods if they are available, otherwise fall back to
+      // Shiny's defaults. NOTE: If Shiny's output bindings gain additional
+      // methods in the future, and we want them to be overrideable by
+      // HTMLWidget binding definitions, then we'll need to add them to this
+      // list.
+      delegateMethod(shinyBinding, bindingDef, "getId");
+      delegateMethod(shinyBinding, bindingDef, "onValueChange");
+      delegateMethod(shinyBinding, bindingDef, "onValueError");
+      delegateMethod(shinyBinding, bindingDef, "renderError");
+      delegateMethod(shinyBinding, bindingDef, "clearError");
+      delegateMethod(shinyBinding, bindingDef, "showProgress");
+
+      // The find, renderValue, and resize are handled differently, because we
+      // want to actually decorate the behavior of the bindingDef methods.
+
+      shinyBinding.find = function(scope) {
+        var results = bindingDef.find(scope);
+
+        // Only return elements that are Shiny outputs, not static ones
+        var dynamicResults = results.filter(".html-widget-output");
+
+        // It's possible that whatever caused Shiny to think there might be
+        // new dynamic outputs, also caused there to be new static outputs.
+        // Since there might be lots of different htmlwidgets bindings, we
+        // schedule execution for later--no need to staticRender multiple
+        // times.
+        if (results.length !== dynamicResults.length)
+          scheduleStaticRender();
+
+        return dynamicResults;
+      };
+
+      // Wrap renderValue to handle initialization, which unfortunately isn't
+      // supported natively by Shiny at the time of this writing.
+
+      shinyBinding.renderValue = function(el, data) {
+        Shiny.renderDependencies(data.deps);
+        // Resolve strings marked as javascript literals to objects
+        if (!(data.evals instanceof Array)) data.evals = [data.evals];
+        for (var i = 0; data.evals && i < data.evals.length; i++) {
+          window.HTMLWidgets.evaluateStringMember(data.x, data.evals[i]);
+        }
+        if (!bindingDef.renderOnNullValue) {
+          if (data.x === null) {
+            el.style.visibility = "hidden";
+            return;
+          } else {
+            el.style.visibility = "inherit";
+          }
+        }
+        if (!elementData(el, "initialized")) {
+          initSizing(el);
+
+          elementData(el, "initialized", true);
+          if (bindingDef.initialize) {
+            var result = bindingDef.initialize(el, el.offsetWidth,
+              el.offsetHeight);
+            elementData(el, "init_result", result);
+          }
+        }
+        bindingDef.renderValue(el, data.x, elementData(el, "init_result"));
+        evalAndRun(data.jsHooks.render, elementData(el, "init_result"), [el, data.x]);
+      };
+
+      // Only override resize if bindingDef implements it
+      if (bindingDef.resize) {
+        shinyBinding.resize = function(el, width, height) {
+          // Shiny can call resize before initialize/renderValue have been
+          // called, which doesn't make sense for widgets.
+          if (elementData(el, "initialized")) {
+            bindingDef.resize(el, width, height, elementData(el, "init_result"));
+          }
+        };
+      }
+
+      Shiny.outputBindings.register(shinyBinding, bindingDef.name);
+    }
+  };
+
+  var scheduleStaticRenderTimerId = null;
+  function scheduleStaticRender() {
+    if (!scheduleStaticRenderTimerId) {
+      scheduleStaticRenderTimerId = setTimeout(function() {
+        scheduleStaticRenderTimerId = null;
+        window.HTMLWidgets.staticRender();
+      }, 1);
+    }
+  }
+
+  // Render static widgets after the document finishes loading
+  // Statically render all elements that are of this widget's class
+  window.HTMLWidgets.staticRender = function() {
+    var bindings = window.HTMLWidgets.widgets || [];
+    forEach(bindings, function(binding) {
+      var matches = binding.find(document.documentElement);
+      forEach(matches, function(el) {
+        var sizeObj = initSizing(el, binding);
+
+        if (hasClass(el, "html-widget-static-bound"))
+          return;
+        el.className = el.className + " html-widget-static-bound";
+
+        var initResult;
+        if (binding.initialize) {
+          initResult = binding.initialize(el,
+            sizeObj ? sizeObj.getWidth() : el.offsetWidth,
+            sizeObj ? sizeObj.getHeight() : el.offsetHeight
+          );
+          elementData(el, "init_result", initResult);
+        }
+
+        if (binding.resize) {
+          var lastSize = {
+            w: sizeObj ? sizeObj.getWidth() : el.offsetWidth,
+            h: sizeObj ? sizeObj.getHeight() : el.offsetHeight
+          };
+          var resizeHandler = function(e) {
+            var size = {
+              w: sizeObj ? sizeObj.getWidth() : el.offsetWidth,
+              h: sizeObj ? sizeObj.getHeight() : el.offsetHeight
+            };
+            if (size.w === 0 && size.h === 0)
+              return;
+            if (size.w === lastSize.w && size.h === lastSize.h)
+              return;
+            lastSize = size;
+            binding.resize(el, size.w, size.h, initResult);
+          };
+
+          on(window, "resize", resizeHandler);
+
+          // This is needed for cases where we're running in a Shiny
+          // app, but the widget itself is not a Shiny output, but
+          // rather a simple static widget. One example of this is
+          // an rmarkdown document that has runtime:shiny and widget
+          // that isn't in a render function. Shiny only knows to
+          // call resize handlers for Shiny outputs, not for static
+          // widgets, so we do it ourselves.
+          if (window.jQuery) {
+            window.jQuery(document).on(
+              "shown.htmlwidgets shown.bs.tab.htmlwidgets shown.bs.collapse.htmlwidgets",
+              resizeHandler
+            );
+            window.jQuery(document).on(
+              "hidden.htmlwidgets hidden.bs.tab.htmlwidgets hidden.bs.collapse.htmlwidgets",
+              resizeHandler
+            );
+          }
+
+          // This is needed for the specific case of ioslides, which
+          // flips slides between display:none and display:block.
+          // Ideally we would not have to have ioslide-specific code
+          // here, but rather have ioslides raise a generic event,
+          // but the rmarkdown package just went to CRAN so the
+          // window to getting that fixed may be long.
+          if (window.addEventListener) {
+            // It's OK to limit this to window.addEventListener
+            // browsers because ioslides itself only supports
+            // such browsers.
+            on(document, "slideenter", resizeHandler);
+            on(document, "slideleave", resizeHandler);
+          }
+        }
+
+        var scriptData = document.querySelector("script[data-for='" + el.id + "'][type='application/json']");
+        if (scriptData) {
+          var data = JSON.parse(scriptData.textContent || scriptData.text);
+          // Resolve strings marked as javascript literals to objects
+          if (!(data.evals instanceof Array)) data.evals = [data.evals];
+          for (var k = 0; data.evals && k < data.evals.length; k++) {
+            window.HTMLWidgets.evaluateStringMember(data.x, data.evals[k]);
+          }
+          binding.renderValue(el, data.x, initResult);
+          evalAndRun(data.jsHooks.render, initResult, [el, data.x]);
+        }
+      });
+    });
+
+    invokePostRenderHandlers();
+  }
+
+
+  function has_jQuery3() {
+    if (!window.jQuery) {
+      return false;
+    }
+    var $version = window.jQuery.fn.jquery;
+    var $major_version = parseInt($version.split(".")[0]);
+    return $major_version >= 3;
+  }
+
+  /*
+  / Shiny 1.4 bumped jQuery from 1.x to 3.x which means jQuery's
+  / on-ready handler (i.e., $(fn)) is now asyncronous (i.e., it now
+  / really means $(setTimeout(fn)).
+  / https://jquery.com/upgrade-guide/3.0/#breaking-change-document-ready-handlers-are-now-asynchronous
+  /
+  / Since Shiny uses $() to schedule initShiny, shiny>=1.4 calls initShiny
+  / one tick later than it did before, which means staticRender() is
+  / called renderValue() earlier than (advanced) widget authors might be expecting.
+  / https://github.com/rstudio/shiny/issues/2630
+  /
+  / For a concrete example, leaflet has some methods (e.g., updateBounds)
+  / which reference Shiny methods registered in initShiny (e.g., setInputValue).
+  / Since leaflet is privy to this life-cycle, it knows to use setTimeout() to
+  / delay execution of those methods (until Shiny methods are ready)
+  / https://github.com/rstudio/leaflet/blob/18ec981/javascript/src/index.js#L266-L268
+  /
+  / Ideally widget authors wouldn't need to use this setTimeout() hack that
+  / leaflet uses to call Shiny methods on a staticRender(). In the long run,
+  / the logic initShiny should be broken up so that method registration happens
+  / right away, but binding happens later.
+  */
+  function maybeStaticRenderLater() {
+    if (shinyMode && has_jQuery3()) {
+      window.jQuery(window.HTMLWidgets.staticRender);
+    } else {
+      window.HTMLWidgets.staticRender();
+    }
+  }
+
+  if (document.addEventListener) {
+    document.addEventListener("DOMContentLoaded", function() {
+      document.removeEventListener("DOMContentLoaded", arguments.callee, false);
+      maybeStaticRenderLater();
+    }, false);
+  } else if (document.attachEvent) {
+    document.attachEvent("onreadystatechange", function() {
+      if (document.readyState === "complete") {
+        document.detachEvent("onreadystatechange", arguments.callee);
+        maybeStaticRenderLater();
+      }
+    });
+  }
+
+
+  window.HTMLWidgets.getAttachmentUrl = function(depname, key) {
+    // If no key, default to the first item
+    if (typeof(key) === "undefined")
+      key = 1;
+
+    var link = document.getElementById(depname + "-" + key + "-attachment");
+    if (!link) {
+      throw new Error("Attachment " + depname + "/" + key + " not found in document");
+    }
+    return link.getAttribute("href");
+  };
+
+  window.HTMLWidgets.dataframeToD3 = function(df) {
+    var names = [];
+    var length;
+    for (var name in df) {
+        if (df.hasOwnProperty(name))
+            names.push(name);
+        if (typeof(df[name]) !== "object" || typeof(df[name].length) === "undefined") {
+            throw new Error("All fields must be arrays");
+        } else if (typeof(length) !== "undefined" && length !== df[name].length) {
+            throw new Error("All fields must be arrays of the same length");
+        }
+        length = df[name].length;
+    }
+    var results = [];
+    var item;
+    for (var row = 0; row < length; row++) {
+        item = {};
+        for (var col = 0; col < names.length; col++) {
+            item[names[col]] = df[names[col]][row];
+        }
+        results.push(item);
+    }
+    return results;
+  };
+
+  window.HTMLWidgets.transposeArray2D = function(array) {
+      if (array.length === 0) return array;
+      var newArray = array[0].map(function(col, i) {
+          return array.map(function(row) {
+              return row[i]
+          })
+      });
+      return newArray;
+  };
+  // Split value at splitChar, but allow splitChar to be escaped
+  // using escapeChar. Any other characters escaped by escapeChar
+  // will be included as usual (including escapeChar itself).
+  function splitWithEscape(value, splitChar, escapeChar) {
+    var results = [];
+    var escapeMode = false;
+    var currentResult = "";
+    for (var pos = 0; pos < value.length; pos++) {
+      if (!escapeMode) {
+        if (value[pos] === splitChar) {
+          results.push(currentResult);
+          currentResult = "";
+        } else if (value[pos] === escapeChar) {
+          escapeMode = true;
+        } else {
+          currentResult += value[pos];
+        }
+      } else {
+        currentResult += value[pos];
+        escapeMode = false;
+      }
+    }
+    if (currentResult !== "") {
+      results.push(currentResult);
+    }
+    return results;
+  }
+  // Function authored by Yihui/JJ Allaire
+  window.HTMLWidgets.evaluateStringMember = function(o, member) {
+    var parts = splitWithEscape(member, '.', '\\');
+    for (var i = 0, l = parts.length; i < l; i++) {
+      var part = parts[i];
+      // part may be a character or 'numeric' member name
+      if (o !== null && typeof o === "object" && part in o) {
+        if (i == (l - 1)) { // if we are at the end of the line then evalulate
+          if (typeof o[part] === "string")
+            o[part] = tryEval(o[part]);
+        } else { // otherwise continue to next embedded object
+          o = o[part];
+        }
+      }
+    }
+  };
+
+  // Retrieve the HTMLWidget instance (i.e. the return value of an
+  // HTMLWidget binding's initialize() or factory() function)
+  // associated with an element, or null if none.
+  window.HTMLWidgets.getInstance = function(el) {
+    return elementData(el, "init_result");
+  };
+
+  // Finds the first element in the scope that matches the selector,
+  // and returns the HTMLWidget instance (i.e. the return value of
+  // an HTMLWidget binding's initialize() or factory() function)
+  // associated with that element, if any. If no element matches the
+  // selector, or the first matching element has no HTMLWidget
+  // instance associated with it, then null is returned.
+  //
+  // The scope argument is optional, and defaults to window.document.
+  window.HTMLWidgets.find = function(scope, selector) {
+    if (arguments.length == 1) {
+      selector = scope;
+      scope = document;
+    }
+
+    var el = scope.querySelector(selector);
+    if (el === null) {
+      return null;
+    } else {
+      return window.HTMLWidgets.getInstance(el);
+    }
+  };
+
+  // Finds all elements in the scope that match the selector, and
+  // returns the HTMLWidget instances (i.e. the return values of
+  // an HTMLWidget binding's initialize() or factory() function)
+  // associated with the elements, in an array. If elements that
+  // match the selector don't have an associated HTMLWidget
+  // instance, the returned array will contain nulls.
+  //
+  // The scope argument is optional, and defaults to window.document.
+  window.HTMLWidgets.findAll = function(scope, selector) {
+    if (arguments.length == 1) {
+      selector = scope;
+      scope = document;
+    }
+
+    var nodes = scope.querySelectorAll(selector);
+    var results = [];
+    for (var i = 0; i < nodes.length; i++) {
+      results.push(window.HTMLWidgets.getInstance(nodes[i]));
+    }
+    return results;
+  };
+
+  var postRenderHandlers = [];
+  function invokePostRenderHandlers() {
+    while (postRenderHandlers.length) {
+      var handler = postRenderHandlers.shift();
+      if (handler) {
+        handler();
+      }
+    }
+  }
+
+  // Register the given callback function to be invoked after the
+  // next time static widgets are rendered.
+  window.HTMLWidgets.addPostRenderHandler = function(callback) {
+    postRenderHandlers.push(callback);
+  };
+
+  // Takes a new-style instance-bound definition, and returns an
+  // old-style class-bound definition. This saves us from having
+  // to rewrite all the logic in this file to accomodate both
+  // types of definitions.
+  function createLegacyDefinitionAdapter(defn) {
+    var result = {
+      name: defn.name,
+      type: defn.type,
+      initialize: function(el, width, height) {
+        return defn.factory(el, width, height);
+      },
+      renderValue: function(el, x, instance) {
+        return instance.renderValue(x);
+      },
+      resize: function(el, width, height, instance) {
+        return instance.resize(width, height);
+      }
+    };
+
+    if (defn.find)
+      result.find = defn.find;
+    if (defn.renderError)
+      result.renderError = defn.renderError;
+    if (defn.clearError)
+      result.clearError = defn.clearError;
+
+    return result;
+  }
+})();
+
+</script>
+
+        <script>HTMLWidgets.widget({
+
+  name: "pivottabler",
+
+  type: "output",
+
+  factory: function(el, width, height) {
+
+    var pivotElement = el;
+    var initialised = false;
+
+    return {
+      renderValue: function(widgetData) {
+
+        if(!initialised) {
+          if(widgetData.tableCss !== null) {
+            docHead = document.head || document.getElementsByTagName("head")[0];
+            var styles = document.createElement("style");
+            styles.innerHTML = widgetData.tableCss;
+            docHead.appendChild(styles);
+          }
+          initialised = true;
+        }
+        pivotElement.innerHTML = widgetData.tableHtml;
+      },
+
+      resize: function(width, height) {
+      },
+
+    };
+  }
+});
+</script>
     
     
         <style type="text/css">code{white-space: pre;}</style>
@@ -1270,7 +2208,7 @@ develop a model for predicting profit for the 1000 new leads?</p>
 <div id="loading-dataset-and-basic-data-quality-check" class="section level3">
 <h3>Loading Dataset and Basic Data Quality Check</h3>
 <p>Dimensions, Variables Count and Dataset Structure</p>
-<template id="7d62e551-6b51-4a0b-ba2e-1a8353a13b51"><style>
+<template id="2a5b82c8-29b1-40b5-8839-3cd42fd2f8c8"><style>
 .tabwid table{
   border-spacing:0px !important;
   border-collapse:collapse;
@@ -1309,11 +2247,11 @@ background-color: transparent;
 .katex-display {
     margin: 0 0 !important;
 }
-</style><div class="tabwid"><style>.cl-fb78bcc8{}.cl-fb71767a{font-family:'Arial';font-size:7pt;font-weight:normal;font-style:normal;text-decoration:none;color:rgba(0, 0, 0, 1.00);background-color:transparent;}.cl-fb74104c{margin:0;text-align:right;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);padding-bottom:5pt;padding-top:5pt;padding-left:5pt;padding-right:5pt;line-height: 1;background-color:transparent;}.cl-fb74104d{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 2pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-fb74104e{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-fb74104f{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}</style><table class="cl-fb78bcc8"><thead><tr style="overflow-wrap:break-word;"><td class="cl-fb74104d"><p class="cl-fb74104c"><span class="cl-fb71767a">ID</span></p></td><td class="cl-fb74104d"><p class="cl-fb74104c"><span class="cl-fb71767a">Age</span></p></td><td class="cl-fb74104d"><p class="cl-fb74104c"><span class="cl-fb71767a">Experience</span></p></td><td class="cl-fb74104d"><p class="cl-fb74104c"><span class="cl-fb71767a">Income</span></p></td><td class="cl-fb74104d"><p class="cl-fb74104c"><span class="cl-fb71767a">ZIP Code</span></p></td><td class="cl-fb74104d"><p class="cl-fb74104c"><span class="cl-fb71767a">Family</span></p></td><td class="cl-fb74104d"><p class="cl-fb74104c"><span class="cl-fb71767a">CCAvg</span></p></td><td class="cl-fb74104d"><p class="cl-fb74104c"><span class="cl-fb71767a">Education</span></p></td><td class="cl-fb74104d"><p class="cl-fb74104c"><span class="cl-fb71767a">Mortgage</span></p></td><td class="cl-fb74104d"><p class="cl-fb74104c"><span class="cl-fb71767a">Personal Loan</span></p></td><td class="cl-fb74104d"><p class="cl-fb74104c"><span class="cl-fb71767a">Securities Account</span></p></td><td class="cl-fb74104d"><p class="cl-fb74104c"><span class="cl-fb71767a">CD Account</span></p></td><td class="cl-fb74104d"><p class="cl-fb74104c"><span class="cl-fb71767a">Online</span></p></td><td class="cl-fb74104d"><p class="cl-fb74104c"><span class="cl-fb71767a">CreditCard</span></p></td></tr></thead><tbody><tr style="overflow-wrap:break-word;"><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">1</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">25</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">1</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">49</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">91,107</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">4</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">1.6</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">1</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">1</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">2</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">45</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">19</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">34</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">90,089</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">3</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">1.5</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">1</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">1</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">3</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">39</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">15</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">11</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">94,720</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">1</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">1.0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">1</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">4</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">35</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">9</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">100</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">94,112</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">1</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">2.7</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">2</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">5</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">35</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">8</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">45</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">91,330</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">4</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">1.0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">2</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104e"><p class="cl-fb74104c"><span class="cl-fb71767a">1</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fb74104f"><p class="cl-fb74104c"><span class="cl-fb71767a">6</span></p></td><td class="cl-fb74104f"><p class="cl-fb74104c"><span class="cl-fb71767a">37</span></p></td><td class="cl-fb74104f"><p class="cl-fb74104c"><span class="cl-fb71767a">13</span></p></td><td class="cl-fb74104f"><p class="cl-fb74104c"><span class="cl-fb71767a">29</span></p></td><td class="cl-fb74104f"><p class="cl-fb74104c"><span class="cl-fb71767a">92,121</span></p></td><td class="cl-fb74104f"><p class="cl-fb74104c"><span class="cl-fb71767a">4</span></p></td><td class="cl-fb74104f"><p class="cl-fb74104c"><span class="cl-fb71767a">0.4</span></p></td><td class="cl-fb74104f"><p class="cl-fb74104c"><span class="cl-fb71767a">2</span></p></td><td class="cl-fb74104f"><p class="cl-fb74104c"><span class="cl-fb71767a">155</span></p></td><td class="cl-fb74104f"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104f"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104f"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td><td class="cl-fb74104f"><p class="cl-fb74104c"><span class="cl-fb71767a">1</span></p></td><td class="cl-fb74104f"><p class="cl-fb74104c"><span class="cl-fb71767a">0</span></p></td></tr></tbody></table></div></template>
-<div class="flextable-shadow-host" id="c768b031-c245-49bb-8e10-e120802ff232"></div>
+</style><div class="tabwid"><style>.cl-bcc11952{}.cl-bcb907bc{font-family:'Arial';font-size:7pt;font-weight:normal;font-style:normal;text-decoration:none;color:rgba(0, 0, 0, 1.00);background-color:transparent;}.cl-bcbbed4c{margin:0;text-align:right;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);padding-bottom:5pt;padding-top:5pt;padding-left:5pt;padding-right:5pt;line-height: 1;background-color:transparent;}.cl-bcbbed4d{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 2pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-bcbbed4e{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-bcbbed4f{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}</style><table class="cl-bcc11952"><thead><tr style="overflow-wrap:break-word;"><td class="cl-bcbbed4d"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">ID</span></p></td><td class="cl-bcbbed4d"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">Age</span></p></td><td class="cl-bcbbed4d"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">Experience</span></p></td><td class="cl-bcbbed4d"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">Income</span></p></td><td class="cl-bcbbed4d"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">ZIP Code</span></p></td><td class="cl-bcbbed4d"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">Family</span></p></td><td class="cl-bcbbed4d"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">CCAvg</span></p></td><td class="cl-bcbbed4d"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">Education</span></p></td><td class="cl-bcbbed4d"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">Mortgage</span></p></td><td class="cl-bcbbed4d"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">Personal Loan</span></p></td><td class="cl-bcbbed4d"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">Securities Account</span></p></td><td class="cl-bcbbed4d"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">CD Account</span></p></td><td class="cl-bcbbed4d"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">Online</span></p></td><td class="cl-bcbbed4d"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">CreditCard</span></p></td></tr></thead><tbody><tr style="overflow-wrap:break-word;"><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">1</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">25</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">1</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">49</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">91,107</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">4</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">1.6</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">1</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">1</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">2</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">45</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">19</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">34</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">90,089</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">3</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">1.5</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">1</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">1</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">3</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">39</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">15</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">11</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">94,720</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">1</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">1.0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">1</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">4</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">35</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">9</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">100</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">94,112</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">1</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">2.7</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">2</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">5</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">35</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">8</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">45</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">91,330</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">4</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">1.0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">2</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4e"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">1</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-bcbbed4f"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">6</span></p></td><td class="cl-bcbbed4f"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">37</span></p></td><td class="cl-bcbbed4f"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">13</span></p></td><td class="cl-bcbbed4f"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">29</span></p></td><td class="cl-bcbbed4f"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">92,121</span></p></td><td class="cl-bcbbed4f"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">4</span></p></td><td class="cl-bcbbed4f"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0.4</span></p></td><td class="cl-bcbbed4f"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">2</span></p></td><td class="cl-bcbbed4f"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">155</span></p></td><td class="cl-bcbbed4f"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4f"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4f"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td><td class="cl-bcbbed4f"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">1</span></p></td><td class="cl-bcbbed4f"><p class="cl-bcbbed4c"><span class="cl-bcb907bc">0</span></p></td></tr></tbody></table></div></template>
+<div class="flextable-shadow-host" id="f2764c3f-eb55-47e6-82a7-43ce9098f101"></div>
 <script>
-var dest = document.getElementById("c768b031-c245-49bb-8e10-e120802ff232");
-var template = document.getElementById("7d62e551-6b51-4a0b-ba2e-1a8353a13b51");
+var dest = document.getElementById("f2764c3f-eb55-47e6-82a7-43ce9098f101");
+var template = document.getElementById("2a5b82c8-29b1-40b5-8839-3cd42fd2f8c8");
 var caption = template.content.querySelector("caption");
 var fantome = dest.attachShadow({mode: 'open'});
 var templateContent = template.content;
@@ -1450,7 +2388,7 @@ code using Κ = 1</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Table Customer after Predictions</span></span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">flextable</span>(<span class="fu">head</span>(Customer_Test)) <span class="sc">%&gt;%</span> </span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fontsize</span>(<span class="at">size =</span> <span class="dv">7</span>, <span class="at">part =</span> <span class="st">&quot;all&quot;</span>)</span></code></pre></div>
-<template id="8b05d9fe-d25b-4b0f-99bd-84604534b152"><style>
+<template id="a9cd92a7-ab24-4502-8fb7-86585be92327"><style>
 .tabwid table{
   border-spacing:0px !important;
   border-collapse:collapse;
@@ -1489,11 +2427,11 @@ background-color: transparent;
 .katex-display {
     margin: 0 0 !important;
 }
-</style><div class="tabwid"><style>.cl-fc3c462a{}.cl-fc35da1a{font-family:'Arial';font-size:7pt;font-weight:normal;font-style:normal;text-decoration:none;color:rgba(0, 0, 0, 1.00);background-color:transparent;}.cl-fc3818d4{margin:0;text-align:right;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);padding-bottom:5pt;padding-top:5pt;padding-left:5pt;padding-right:5pt;line-height: 1;background-color:transparent;}.cl-fc3818d5{margin:0;text-align:left;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);padding-bottom:5pt;padding-top:5pt;padding-left:5pt;padding-right:5pt;line-height: 1;background-color:transparent;}.cl-fc383ff8{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 2pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-fc383ff9{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 2pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-fc383ffa{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-fc383ffb{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}</style><table class="cl-fc3c462a"><thead><tr style="overflow-wrap:break-word;"><td class="cl-fc383ff8"><p class="cl-fc3818d4"><span class="cl-fc35da1a">Age</span></p></td><td class="cl-fc383ff8"><p class="cl-fc3818d4"><span class="cl-fc35da1a">Experience</span></p></td><td class="cl-fc383ff8"><p class="cl-fc3818d4"><span class="cl-fc35da1a">Income</span></p></td><td class="cl-fc383ff8"><p class="cl-fc3818d4"><span class="cl-fc35da1a">Family</span></p></td><td class="cl-fc383ff8"><p class="cl-fc3818d4"><span class="cl-fc35da1a">CCAvg</span></p></td><td class="cl-fc383ff8"><p class="cl-fc3818d4"><span class="cl-fc35da1a">Mortgage</span></p></td><td class="cl-fc383ff8"><p class="cl-fc3818d4"><span class="cl-fc35da1a">Securities Account</span></p></td><td class="cl-fc383ff8"><p class="cl-fc3818d4"><span class="cl-fc35da1a">CD Account</span></p></td><td class="cl-fc383ff8"><p class="cl-fc3818d4"><span class="cl-fc35da1a">Online</span></p></td><td class="cl-fc383ff8"><p class="cl-fc3818d4"><span class="cl-fc35da1a">CreditCard</span></p></td><td class="cl-fc383ff8"><p class="cl-fc3818d4"><span class="cl-fc35da1a">Education_1</span></p></td><td class="cl-fc383ff8"><p class="cl-fc3818d4"><span class="cl-fc35da1a">Education_2</span></p></td><td class="cl-fc383ff8"><p class="cl-fc3818d4"><span class="cl-fc35da1a">Education_3</span></p></td><td class="cl-fc383ff9"><p class="cl-fc3818d5"><span class="cl-fc35da1a">Predicted</span></p></td></tr></thead><tbody><tr style="overflow-wrap:break-word;"><td class="cl-fc383ffa"><p class="cl-fc3818d4"><span class="cl-fc35da1a">40</span></p></td><td class="cl-fc383ffa"><p class="cl-fc3818d4"><span class="cl-fc35da1a">10</span></p></td><td class="cl-fc383ffa"><p class="cl-fc3818d4"><span class="cl-fc35da1a">84</span></p></td><td class="cl-fc383ffa"><p class="cl-fc3818d4"><span class="cl-fc35da1a">2</span></p></td><td class="cl-fc383ffa"><p class="cl-fc3818d4"><span class="cl-fc35da1a">2</span></p></td><td class="cl-fc383ffa"><p class="cl-fc3818d4"><span class="cl-fc35da1a">0</span></p></td><td class="cl-fc383ffa"><p class="cl-fc3818d4"><span class="cl-fc35da1a">0</span></p></td><td class="cl-fc383ffa"><p class="cl-fc3818d4"><span class="cl-fc35da1a">0</span></p></td><td class="cl-fc383ffa"><p class="cl-fc3818d4"><span class="cl-fc35da1a">1</span></p></td><td class="cl-fc383ffa"><p class="cl-fc3818d4"><span class="cl-fc35da1a">1</span></p></td><td class="cl-fc383ffa"><p class="cl-fc3818d4"><span class="cl-fc35da1a">0</span></p></td><td class="cl-fc383ffa"><p class="cl-fc3818d4"><span class="cl-fc35da1a">1</span></p></td><td class="cl-fc383ffa"><p class="cl-fc3818d4"><span class="cl-fc35da1a">0</span></p></td><td class="cl-fc383ffb"><p class="cl-fc3818d5"><span class="cl-fc35da1a">Fail</span></p></td></tr></tbody></table></div></template>
-<div class="flextable-shadow-host" id="25451fbc-1d18-47d1-8108-7d9ed6552680"></div>
+</style><div class="tabwid"><style>.cl-bd989076{}.cl-bd922588{font-family:'Arial';font-size:7pt;font-weight:normal;font-style:normal;text-decoration:none;color:rgba(0, 0, 0, 1.00);background-color:transparent;}.cl-bd9494c6{margin:0;text-align:right;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);padding-bottom:5pt;padding-top:5pt;padding-left:5pt;padding-right:5pt;line-height: 1;background-color:transparent;}.cl-bd9494c7{margin:0;text-align:left;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);padding-bottom:5pt;padding-top:5pt;padding-left:5pt;padding-right:5pt;line-height: 1;background-color:transparent;}.cl-bd94a86c{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 2pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-bd94a86d{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 2pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-bd94a86e{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-bd94a86f{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}</style><table class="cl-bd989076"><thead><tr style="overflow-wrap:break-word;"><td class="cl-bd94a86c"><p class="cl-bd9494c6"><span class="cl-bd922588">Age</span></p></td><td class="cl-bd94a86c"><p class="cl-bd9494c6"><span class="cl-bd922588">Experience</span></p></td><td class="cl-bd94a86c"><p class="cl-bd9494c6"><span class="cl-bd922588">Income</span></p></td><td class="cl-bd94a86c"><p class="cl-bd9494c6"><span class="cl-bd922588">Family</span></p></td><td class="cl-bd94a86c"><p class="cl-bd9494c6"><span class="cl-bd922588">CCAvg</span></p></td><td class="cl-bd94a86c"><p class="cl-bd9494c6"><span class="cl-bd922588">Mortgage</span></p></td><td class="cl-bd94a86c"><p class="cl-bd9494c6"><span class="cl-bd922588">Securities Account</span></p></td><td class="cl-bd94a86c"><p class="cl-bd9494c6"><span class="cl-bd922588">CD Account</span></p></td><td class="cl-bd94a86c"><p class="cl-bd9494c6"><span class="cl-bd922588">Online</span></p></td><td class="cl-bd94a86c"><p class="cl-bd9494c6"><span class="cl-bd922588">CreditCard</span></p></td><td class="cl-bd94a86c"><p class="cl-bd9494c6"><span class="cl-bd922588">Education_1</span></p></td><td class="cl-bd94a86c"><p class="cl-bd9494c6"><span class="cl-bd922588">Education_2</span></p></td><td class="cl-bd94a86c"><p class="cl-bd9494c6"><span class="cl-bd922588">Education_3</span></p></td><td class="cl-bd94a86d"><p class="cl-bd9494c7"><span class="cl-bd922588">Predicted</span></p></td></tr></thead><tbody><tr style="overflow-wrap:break-word;"><td class="cl-bd94a86e"><p class="cl-bd9494c6"><span class="cl-bd922588">40</span></p></td><td class="cl-bd94a86e"><p class="cl-bd9494c6"><span class="cl-bd922588">10</span></p></td><td class="cl-bd94a86e"><p class="cl-bd9494c6"><span class="cl-bd922588">84</span></p></td><td class="cl-bd94a86e"><p class="cl-bd9494c6"><span class="cl-bd922588">2</span></p></td><td class="cl-bd94a86e"><p class="cl-bd9494c6"><span class="cl-bd922588">2</span></p></td><td class="cl-bd94a86e"><p class="cl-bd9494c6"><span class="cl-bd922588">0</span></p></td><td class="cl-bd94a86e"><p class="cl-bd9494c6"><span class="cl-bd922588">0</span></p></td><td class="cl-bd94a86e"><p class="cl-bd9494c6"><span class="cl-bd922588">0</span></p></td><td class="cl-bd94a86e"><p class="cl-bd9494c6"><span class="cl-bd922588">1</span></p></td><td class="cl-bd94a86e"><p class="cl-bd9494c6"><span class="cl-bd922588">1</span></p></td><td class="cl-bd94a86e"><p class="cl-bd9494c6"><span class="cl-bd922588">0</span></p></td><td class="cl-bd94a86e"><p class="cl-bd9494c6"><span class="cl-bd922588">1</span></p></td><td class="cl-bd94a86e"><p class="cl-bd9494c6"><span class="cl-bd922588">0</span></p></td><td class="cl-bd94a86f"><p class="cl-bd9494c7"><span class="cl-bd922588">Fail</span></p></td></tr></tbody></table></div></template>
+<div class="flextable-shadow-host" id="27774e51-18c3-4b44-9be7-3e11e06fa84f"></div>
 <script>
-var dest = document.getElementById("25451fbc-1d18-47d1-8108-7d9ed6552680");
-var template = document.getElementById("8b05d9fe-d25b-4b0f-99bd-84604534b152");
+var dest = document.getElementById("27774e51-18c3-4b44-9be7-3e11e06fa84f");
+var template = document.getElementById("a9cd92a7-ab24-4502-8fb7-86585be92327");
 var caption = template.content.querySelector("caption");
 var fantome = dest.attachShadow({mode: 'open'});
 var templateContent = template.content;
@@ -1533,7 +2471,7 @@ ignoring the predictor information?</h3>
 <span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a><span class="co"># Table of Accuracy</span></span>
 <span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a><span class="fu">flextable</span>(accuracy.df) <span class="sc">%&gt;%</span> </span>
 <span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fontsize</span>(<span class="at">size =</span> <span class="dv">12</span>, <span class="at">part =</span> <span class="st">&quot;all&quot;</span>)</span></code></pre></div>
-<template id="708fbcdf-6939-4e5b-abc8-daae5d6a7611"><style>
+<template id="0e15253c-cf1e-4afc-8b20-3f68b6b820d7"><style>
 .tabwid table{
   border-spacing:0px !important;
   border-collapse:collapse;
@@ -1572,11 +2510,11 @@ background-color: transparent;
 .katex-display {
     margin: 0 0 !important;
 }
-</style><div class="tabwid"><style>.cl-fce0414e{}.cl-fcda29a8{font-family:'Arial';font-size:12pt;font-weight:normal;font-style:normal;text-decoration:none;color:rgba(0, 0, 0, 1.00);background-color:transparent;}.cl-fcdc7da2{margin:0;text-align:right;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);padding-bottom:5pt;padding-top:5pt;padding-left:5pt;padding-right:5pt;line-height: 1;background-color:transparent;}.cl-fcdca4bc{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 2pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-fcdca4bd{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-fcdca4be{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}</style><table class="cl-fce0414e"><thead><tr style="overflow-wrap:break-word;"><td class="cl-fcdca4bc"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">k</span></p></td><td class="cl-fcdca4bc"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">accuracy</span></p></td></tr></thead><tbody><tr style="overflow-wrap:break-word;"><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">1</span></p></td><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">0.9420513</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">2</span></p></td><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">0.9415385</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">3</span></p></td><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">0.9405128</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">4</span></p></td><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">0.9420513</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">5</span></p></td><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">0.9415385</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">6</span></p></td><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">0.9410256</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">7</span></p></td><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">0.9410256</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">8</span></p></td><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">0.9410256</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">9</span></p></td><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">0.9405128</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">10</span></p></td><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">0.9415385</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">11</span></p></td><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">0.9420513</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">12</span></p></td><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">0.9410256</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">13</span></p></td><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">0.9425641</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">14</span></p></td><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">0.9430769</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">15</span></p></td><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">0.9394872</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">16</span></p></td><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">0.9400000</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">17</span></p></td><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">0.9415385</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">18</span></p></td><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">0.9420513</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">19</span></p></td><td class="cl-fcdca4bd"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">0.9415385</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-fcdca4be"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">20</span></p></td><td class="cl-fcdca4be"><p class="cl-fcdc7da2"><span class="cl-fcda29a8">0.9420513</span></p></td></tr></tbody></table></div></template>
-<div class="flextable-shadow-host" id="361875ce-98bf-43d3-be26-1c59f865dea9"></div>
+</style><div class="tabwid"><style>.cl-be3ece1e{}.cl-be38d7f2{font-family:'Arial';font-size:12pt;font-weight:normal;font-style:normal;text-decoration:none;color:rgba(0, 0, 0, 1.00);background-color:transparent;}.cl-be3b232c{margin:0;text-align:right;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);padding-bottom:5pt;padding-top:5pt;padding-left:5pt;padding-right:5pt;line-height: 1;background-color:transparent;}.cl-be3b4a46{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 2pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-be3b4a47{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-be3b4a48{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}</style><table class="cl-be3ece1e"><thead><tr style="overflow-wrap:break-word;"><td class="cl-be3b4a46"><p class="cl-be3b232c"><span class="cl-be38d7f2">k</span></p></td><td class="cl-be3b4a46"><p class="cl-be3b232c"><span class="cl-be38d7f2">accuracy</span></p></td></tr></thead><tbody><tr style="overflow-wrap:break-word;"><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">1</span></p></td><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">0.9420513</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">2</span></p></td><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">0.9415385</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">3</span></p></td><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">0.9405128</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">4</span></p></td><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">0.9420513</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">5</span></p></td><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">0.9415385</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">6</span></p></td><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">0.9410256</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">7</span></p></td><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">0.9410256</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">8</span></p></td><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">0.9410256</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">9</span></p></td><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">0.9405128</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">10</span></p></td><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">0.9415385</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">11</span></p></td><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">0.9420513</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">12</span></p></td><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">0.9410256</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">13</span></p></td><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">0.9425641</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">14</span></p></td><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">0.9430769</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">15</span></p></td><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">0.9394872</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">16</span></p></td><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">0.9400000</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">17</span></p></td><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">0.9415385</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">18</span></p></td><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">0.9420513</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">19</span></p></td><td class="cl-be3b4a47"><p class="cl-be3b232c"><span class="cl-be38d7f2">0.9415385</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-be3b4a48"><p class="cl-be3b232c"><span class="cl-be38d7f2">20</span></p></td><td class="cl-be3b4a48"><p class="cl-be3b232c"><span class="cl-be38d7f2">0.9420513</span></p></td></tr></tbody></table></div></template>
+<div class="flextable-shadow-host" id="9e1e0183-2888-4445-a9a0-7240b091aa09"></div>
 <script>
-var dest = document.getElementById("361875ce-98bf-43d3-be26-1c59f865dea9");
-var template = document.getElementById("708fbcdf-6939-4e5b-abc8-daae5d6a7611");
+var dest = document.getElementById("9e1e0183-2888-4445-a9a0-7240b091aa09");
+var template = document.getElementById("0e15253c-cf1e-4afc-8b20-3f68b6b820d7");
 var caption = template.content.querySelector("caption");
 var fantome = dest.attachShadow({mode: 'open'});
 var templateContent = template.content;
@@ -1699,7 +2637,7 @@ Securities Account = 0, CD Account = 0, Online = 1, and Credit Card =
 <div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Table Customer after Predictions</span></span>
 <span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="fu">flextable</span>(<span class="fu">head</span>(Customer_Test_2)) <span class="sc">%&gt;%</span> </span>
 <span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fontsize</span>(<span class="at">size =</span> <span class="dv">7</span>, <span class="at">part =</span> <span class="st">&quot;all&quot;</span>)</span></code></pre></div>
-<template id="bc01ba72-b6bf-4ecc-97ef-ffbe60b92c33"><style>
+<template id="12adf368-1acb-4dfc-a161-38571fb9a731"><style>
 .tabwid table{
   border-spacing:0px !important;
   border-collapse:collapse;
@@ -1738,11 +2676,11 @@ background-color: transparent;
 .katex-display {
     margin: 0 0 !important;
 }
-</style><div class="tabwid"><style>.cl-fd1d4508{}.cl-fd175fd0{font-family:'Arial';font-size:7pt;font-weight:normal;font-style:normal;text-decoration:none;color:rgba(0, 0, 0, 1.00);background-color:transparent;}.cl-fd19acd6{margin:0;text-align:right;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);padding-bottom:5pt;padding-top:5pt;padding-left:5pt;padding-right:5pt;line-height: 1;background-color:transparent;}.cl-fd19acd7{margin:0;text-align:left;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);padding-bottom:5pt;padding-top:5pt;padding-left:5pt;padding-right:5pt;line-height: 1;background-color:transparent;}.cl-fd19acd8{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 2pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-fd19acd9{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 2pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-fd19acda{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-fd19acdb{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}</style><table class="cl-fd1d4508"><thead><tr style="overflow-wrap:break-word;"><td class="cl-fd19acd8"><p class="cl-fd19acd6"><span class="cl-fd175fd0">Age</span></p></td><td class="cl-fd19acd8"><p class="cl-fd19acd6"><span class="cl-fd175fd0">Experience</span></p></td><td class="cl-fd19acd8"><p class="cl-fd19acd6"><span class="cl-fd175fd0">Income</span></p></td><td class="cl-fd19acd8"><p class="cl-fd19acd6"><span class="cl-fd175fd0">Family</span></p></td><td class="cl-fd19acd8"><p class="cl-fd19acd6"><span class="cl-fd175fd0">CCAvg</span></p></td><td class="cl-fd19acd8"><p class="cl-fd19acd6"><span class="cl-fd175fd0">Mortgage</span></p></td><td class="cl-fd19acd8"><p class="cl-fd19acd6"><span class="cl-fd175fd0">Securities Account</span></p></td><td class="cl-fd19acd8"><p class="cl-fd19acd6"><span class="cl-fd175fd0">CD Account</span></p></td><td class="cl-fd19acd8"><p class="cl-fd19acd6"><span class="cl-fd175fd0">Online</span></p></td><td class="cl-fd19acd8"><p class="cl-fd19acd6"><span class="cl-fd175fd0">CreditCard</span></p></td><td class="cl-fd19acd8"><p class="cl-fd19acd6"><span class="cl-fd175fd0">Education_1</span></p></td><td class="cl-fd19acd8"><p class="cl-fd19acd6"><span class="cl-fd175fd0">Education_2</span></p></td><td class="cl-fd19acd8"><p class="cl-fd19acd6"><span class="cl-fd175fd0">Education_3</span></p></td><td class="cl-fd19acd9"><p class="cl-fd19acd7"><span class="cl-fd175fd0">Predicted</span></p></td></tr></thead><tbody><tr style="overflow-wrap:break-word;"><td class="cl-fd19acda"><p class="cl-fd19acd6"><span class="cl-fd175fd0">40</span></p></td><td class="cl-fd19acda"><p class="cl-fd19acd6"><span class="cl-fd175fd0">10</span></p></td><td class="cl-fd19acda"><p class="cl-fd19acd6"><span class="cl-fd175fd0">84</span></p></td><td class="cl-fd19acda"><p class="cl-fd19acd6"><span class="cl-fd175fd0">2</span></p></td><td class="cl-fd19acda"><p class="cl-fd19acd6"><span class="cl-fd175fd0">2</span></p></td><td class="cl-fd19acda"><p class="cl-fd19acd6"><span class="cl-fd175fd0">0</span></p></td><td class="cl-fd19acda"><p class="cl-fd19acd6"><span class="cl-fd175fd0">0</span></p></td><td class="cl-fd19acda"><p class="cl-fd19acd6"><span class="cl-fd175fd0">0</span></p></td><td class="cl-fd19acda"><p class="cl-fd19acd6"><span class="cl-fd175fd0">1</span></p></td><td class="cl-fd19acda"><p class="cl-fd19acd6"><span class="cl-fd175fd0">1</span></p></td><td class="cl-fd19acda"><p class="cl-fd19acd6"><span class="cl-fd175fd0">0</span></p></td><td class="cl-fd19acda"><p class="cl-fd19acd6"><span class="cl-fd175fd0">1</span></p></td><td class="cl-fd19acda"><p class="cl-fd19acd6"><span class="cl-fd175fd0">0</span></p></td><td class="cl-fd19acdb"><p class="cl-fd19acd7"><span class="cl-fd175fd0">Fail</span></p></td></tr></tbody></table></div></template>
-<div class="flextable-shadow-host" id="1e515747-daf8-409b-8bf1-2d7c3feac1f5"></div>
+</style><div class="tabwid"><style>.cl-be7e6aa6{}.cl-be785972{font-family:'Arial';font-size:7pt;font-weight:normal;font-style:normal;text-decoration:none;color:rgba(0, 0, 0, 1.00);background-color:transparent;}.cl-be7ab7f8{margin:0;text-align:right;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);padding-bottom:5pt;padding-top:5pt;padding-left:5pt;padding-right:5pt;line-height: 1;background-color:transparent;}.cl-be7ab7f9{margin:0;text-align:left;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);padding-bottom:5pt;padding-top:5pt;padding-left:5pt;padding-right:5pt;line-height: 1;background-color:transparent;}.cl-be7adf12{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 2pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-be7adf13{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 2pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-be7adf14{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-be7adf15{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 2pt solid rgba(102, 102, 102, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}</style><table class="cl-be7e6aa6"><thead><tr style="overflow-wrap:break-word;"><td class="cl-be7adf12"><p class="cl-be7ab7f8"><span class="cl-be785972">Age</span></p></td><td class="cl-be7adf12"><p class="cl-be7ab7f8"><span class="cl-be785972">Experience</span></p></td><td class="cl-be7adf12"><p class="cl-be7ab7f8"><span class="cl-be785972">Income</span></p></td><td class="cl-be7adf12"><p class="cl-be7ab7f8"><span class="cl-be785972">Family</span></p></td><td class="cl-be7adf12"><p class="cl-be7ab7f8"><span class="cl-be785972">CCAvg</span></p></td><td class="cl-be7adf12"><p class="cl-be7ab7f8"><span class="cl-be785972">Mortgage</span></p></td><td class="cl-be7adf12"><p class="cl-be7ab7f8"><span class="cl-be785972">Securities Account</span></p></td><td class="cl-be7adf12"><p class="cl-be7ab7f8"><span class="cl-be785972">CD Account</span></p></td><td class="cl-be7adf12"><p class="cl-be7ab7f8"><span class="cl-be785972">Online</span></p></td><td class="cl-be7adf12"><p class="cl-be7ab7f8"><span class="cl-be785972">CreditCard</span></p></td><td class="cl-be7adf12"><p class="cl-be7ab7f8"><span class="cl-be785972">Education_1</span></p></td><td class="cl-be7adf12"><p class="cl-be7ab7f8"><span class="cl-be785972">Education_2</span></p></td><td class="cl-be7adf12"><p class="cl-be7ab7f8"><span class="cl-be785972">Education_3</span></p></td><td class="cl-be7adf13"><p class="cl-be7ab7f9"><span class="cl-be785972">Predicted</span></p></td></tr></thead><tbody><tr style="overflow-wrap:break-word;"><td class="cl-be7adf14"><p class="cl-be7ab7f8"><span class="cl-be785972">40</span></p></td><td class="cl-be7adf14"><p class="cl-be7ab7f8"><span class="cl-be785972">10</span></p></td><td class="cl-be7adf14"><p class="cl-be7ab7f8"><span class="cl-be785972">84</span></p></td><td class="cl-be7adf14"><p class="cl-be7ab7f8"><span class="cl-be785972">2</span></p></td><td class="cl-be7adf14"><p class="cl-be7ab7f8"><span class="cl-be785972">2</span></p></td><td class="cl-be7adf14"><p class="cl-be7ab7f8"><span class="cl-be785972">0</span></p></td><td class="cl-be7adf14"><p class="cl-be7ab7f8"><span class="cl-be785972">0</span></p></td><td class="cl-be7adf14"><p class="cl-be7ab7f8"><span class="cl-be785972">0</span></p></td><td class="cl-be7adf14"><p class="cl-be7ab7f8"><span class="cl-be785972">1</span></p></td><td class="cl-be7adf14"><p class="cl-be7ab7f8"><span class="cl-be785972">1</span></p></td><td class="cl-be7adf14"><p class="cl-be7ab7f8"><span class="cl-be785972">0</span></p></td><td class="cl-be7adf14"><p class="cl-be7ab7f8"><span class="cl-be785972">1</span></p></td><td class="cl-be7adf14"><p class="cl-be7ab7f8"><span class="cl-be785972">0</span></p></td><td class="cl-be7adf15"><p class="cl-be7ab7f9"><span class="cl-be785972">Fail</span></p></td></tr></tbody></table></div></template>
+<div class="flextable-shadow-host" id="a6b19000-c40c-4239-ba89-1a0718f7302c"></div>
 <script>
-var dest = document.getElementById("1e515747-daf8-409b-8bf1-2d7c3feac1f5");
-var template = document.getElementById("bc01ba72-b6bf-4ecc-97ef-ffbe60b92c33");
+var dest = document.getElementById("a6b19000-c40c-4239-ba89-1a0718f7302c");
+var template = document.getElementById("12adf368-1acb-4dfc-a161-38571fb9a731");
 var caption = template.content.querySelector("caption");
 var fantome = dest.attachShadow({mode: 'open'});
 var templateContent = template.content;
@@ -1750,9 +2688,8 @@ fantome.appendChild(templateContent);
 </script>
 
 </div>
-</div>
-<div id="e.-repartition-the-data-50-30-20" class="section level2">
-<h2>e. Repartition the data | 50%-30%-20%</h2>
+<div id="e.-repartition-the-data-50-30-20" class="section level3">
+<h3>e. Repartition the data | 50%-30%-20%</h3>
 <div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Setting Seed</span></span>
 <span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">1</span>)</span>
 <span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -1876,8 +2813,138 @@ fantome.appendChild(templateContent);
 </center>
 </div>
 </div>
+</div>
 <div id="exercise-3." class="section level1">
 <h1><span style="color: #1c6155;">Exercise 3.</span></h1>
+<div id="personal-loan-acceptance" class="section level2">
+<h2>8.1 Personal Loan Acceptance</h2>
+<div id="partition-the-data-into-training-60-and-validation-40-sets-1" class="section level3">
+<h3>Partition the data into training (60%) and validation (40%)
+sets</h3>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>UniversalBank2 <span class="ot">&lt;-</span> <span class="fu">fread</span>(<span class="st">&quot;DATA/UniversalBank.csv&quot;</span>)</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Setting Seed</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">1</span>)</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Splitting Training and Validation </span></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>sample2 <span class="ot">&lt;-</span> <span class="fu">sample</span>(<span class="fu">c</span>(<span class="cn">TRUE</span>, <span class="cn">FALSE</span>), <span class="fu">nrow</span>(UniversalBank2), <span class="at">replace=</span><span class="cn">TRUE</span>, <span class="at">prob=</span><span class="fu">c</span>(<span class="fl">0.6</span>,<span class="fl">0.4</span>))</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>training_8  <span class="ot">&lt;-</span> UniversalBank2[sample2, ]</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>validation_8   <span class="ot">&lt;-</span> UniversalBank2[<span class="sc">!</span>sample2, ]</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Checking if proportions are right</span></span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>training_8_prop <span class="ot">&lt;-</span> (<span class="fu">nrow</span>(training_8)<span class="sc">/</span><span class="fu">nrow</span>(UniversalBank2))<span class="sc">*</span><span class="dv">100</span></span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>validation_8_prop <span class="ot">&lt;-</span> (<span class="fu">nrow</span>(validation_8)<span class="sc">/</span><span class="fu">nrow</span>(UniversalBank2))<span class="sc">*</span><span class="dv">100</span></span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a><span class="fu">paste</span>(training_8_prop,<span class="st">&quot;% In Training&quot;</span>,validation_8_prop,<span class="st">&quot;% In Validation&quot;</span>)</span></code></pre></div>
+<pre><code>## [1] &quot;61 % In Training 39 % In Validation&quot;</code></pre>
+</div>
+<div id="a.-pivot-table" class="section level3">
+<h3>a. Pivot Table</h3>
+<center>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(pivottabler)</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Duplicata of Training Data for Pivot Data</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>pivot_data <span class="ot">&lt;-</span> training_8</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a><span class="co"># As Factor</span></span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>pivot_data<span class="sc">$</span>Online <span class="ot">&lt;-</span> <span class="fu">factor</span>(pivot_data<span class="sc">$</span>Online,<span class="at">levels =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>),<span class="at">labels=</span><span class="fu">c</span>(<span class="st">&quot;Inactive Online&quot;</span>,<span class="st">&quot;Active Online&quot;</span>))</span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>pivot_data<span class="sc">$</span>CreditCard <span class="ot">&lt;-</span> <span class="fu">factor</span>(pivot_data<span class="sc">$</span>CreditCard,<span class="at">levels =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>),<span class="at">labels=</span><span class="fu">c</span>(<span class="st">&quot;No Credit Card&quot;</span>,<span class="st">&quot;Credit Card&quot;</span>))</span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>pivot_data<span class="sc">$</span><span class="st">`</span><span class="at">Personal Loan</span><span class="st">`</span> <span class="ot">&lt;-</span> <span class="fu">factor</span>(pivot_data<span class="sc">$</span><span class="st">`</span><span class="at">Personal Loan</span><span class="st">`</span>,<span class="at">levels =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>),<span class="at">labels=</span><span class="fu">c</span>(<span class="st">&quot;No Personal Loan&quot;</span>,<span class="st">&quot;Personal Loan&quot;</span>))</span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Pivot Table</span></span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a>pt <span class="ot">&lt;-</span> PivotTable<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a>pt<span class="sc">$</span><span class="fu">addData</span>(pivot_data) </span>
+<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a>pt<span class="sc">$</span><span class="fu">addColumnDataGroups</span>(<span class="st">&quot;CreditCard&quot;</span>)</span>
+<span id="cb23-15"><a href="#cb23-15" aria-hidden="true" tabindex="-1"></a>pt<span class="sc">$</span><span class="fu">addRowDataGroups</span>(<span class="st">&quot;Personal Loan&quot;</span>)</span>
+<span id="cb23-16"><a href="#cb23-16" aria-hidden="true" tabindex="-1"></a>pt<span class="sc">$</span><span class="fu">addRowDataGroups</span>(<span class="st">&quot;Online&quot;</span>)</span>
+<span id="cb23-17"><a href="#cb23-17" aria-hidden="true" tabindex="-1"></a>pt<span class="sc">$</span><span class="fu">defineCalculation</span>(<span class="at">calculationName=</span><span class="st">&quot;Total&quot;</span>, <span class="at">summariseExpression=</span><span class="st">&quot;n()&quot;</span>)</span>
+<span id="cb23-18"><a href="#cb23-18" aria-hidden="true" tabindex="-1"></a>pt<span class="sc">$</span><span class="fu">renderPivot</span>()</span></code></pre></div>
+<div id="htmlwidget-160fb61167340f9a6efe" style="width:auto;height:auto;" class="pivottabler html-widget"></div>
+<script type="application/json" data-for="htmlwidget-160fb61167340f9a6efe">{"x":{"tableCss":".Table {display: table; border-collapse: collapse; }\r\n.ColumnHeader {font-family: Arial; font-size: 0.75em; border: 1px solid lightgray; vertical-align: middle; font-weight: bold; background-color: #F2F2F2; padding: 2px; text-align: center; }\r\n.RowHeader {font-family: Arial; font-size: 0.75em; border: 1px solid lightgray; vertical-align: middle; font-weight: bold; background-color: #F2F2F2; padding: 2px 8px 2px 2px; text-align: left; }\r\n.Cell {font-family: Arial; font-size: 0.75em; padding: 2px 2px 2px 8px; border: 1px solid lightgray; vertical-align: middle; text-align: right; }\r\n.OutlineColumnHeader {font-family: Arial; font-size: 0.75em; border: 1px solid lightgray; vertical-align: middle; font-weight: bold; background-color: #F2F2F2; padding: 2px; text-align: center; }\r\n.OutlineRowHeader {font-family: Arial; font-size: 0.75em; border: 1px solid lightgray; vertical-align: middle; font-weight: bold; background-color: #F2F2F2; padding: 2px 8px 2px 2px; text-align: left; }\r\n.OutlineCell {font-family: Arial; font-size: 0.75em; padding: 2px 2px 2px 8px; border: 1px solid lightgray; vertical-align: middle; text-align: right; background-color: #F8F8F8; font-weight: bold; }\r\n.Total {font-family: Arial; font-size: 0.75em; padding: 2px 2px 2px 8px; border: 1px solid lightgray; vertical-align: middle; text-align: right; }\r\n","tableHtml":"<table class=\"Table\">\n  <tr>\n    <th class=\"RowHeader\" colspan=\"2\">&nbsp;<\/th>\n    <th class=\"ColumnHeader\">No Credit Card<\/th>\n    <th class=\"ColumnHeader\">Credit Card<\/th>\n    <th class=\"ColumnHeader\">Total<\/th>\n  <\/tr>\n  <tr>\n    <th class=\"RowHeader\" rowspan=\"3\">No Personal Loan<\/th>\n    <th class=\"RowHeader\">Inactive Online<\/th>\n    <td class=\"Cell\">806<\/td>\n    <td class=\"Cell\">321<\/td>\n    <td class=\"Total\">1127<\/td>\n  <\/tr>\n  <tr>\n    <th class=\"RowHeader\">Active Online<\/th>\n    <td class=\"Cell\">1120<\/td>\n    <td class=\"Cell\">506<\/td>\n    <td class=\"Total\">1626<\/td>\n  <\/tr>\n  <tr>\n    <th class=\"RowHeader\">Total<\/th>\n    <td class=\"Total\">1926<\/td>\n    <td class=\"Total\">827<\/td>\n    <td class=\"Total\">2753<\/td>\n  <\/tr>\n  <tr>\n    <th class=\"RowHeader\" rowspan=\"3\">Personal Loan<\/th>\n    <th class=\"RowHeader\">Inactive Online<\/th>\n    <td class=\"Cell\">68<\/td>\n    <td class=\"Cell\">41<\/td>\n    <td class=\"Total\">109<\/td>\n  <\/tr>\n  <tr>\n    <th class=\"RowHeader\">Active Online<\/th>\n    <td class=\"Cell\">134<\/td>\n    <td class=\"Cell\">54<\/td>\n    <td class=\"Total\">188<\/td>\n  <\/tr>\n  <tr>\n    <th class=\"RowHeader\">Total<\/th>\n    <td class=\"Total\">202<\/td>\n    <td class=\"Total\">95<\/td>\n    <td class=\"Total\">297<\/td>\n  <\/tr>\n  <tr>\n    <th class=\"RowHeader\">Total<\/th>\n    <th class=\"RowHeader\">&nbsp;<\/th>\n    <td class=\"Total\">2128<\/td>\n    <td class=\"Total\">922<\/td>\n    <td class=\"Total\">3050<\/td>\n  <\/tr>\n<\/table>","settings":[]},"evals":[],"jsHooks":[]}</script>
+</center>
+</div>
+<div id="b.-probability-customer-who-owns-a-bank-credit-acrd-and-is-actively-using-online-banking-services-accept-the-loan-offer" class="section level3">
+<h3>b. Probability Customer who owns a bank credit acrd and is actively
+using online banking services accept the loan offer?</h3>
+<blockquote>
+<p>Using Bayes Theorem</p>
+</blockquote>
+<p><span class="math display">\[P(Loan=1 | CC=1 \cap Online=1) =  \\
+\dfrac{P(Loan=1 \cap CC=1 \cap Online=1)}{P(CC=1 \cap Online=1)} = \\
+\dfrac{\dfrac{54}{3050}}{\dfrac{506+54}{3050}} =\dfrac{54}{560} = 9.642
+\% \]</span></p>
+<blockquote>
+<p>Thus, there is 9.642% probability that this kind of customer would
+accept the loan offer.</p>
+</blockquote>
+</div>
+<div id="c.-pivot-table-in-2-versions" class="section level3">
+<h3>c. Pivot Table in 2 Versions</h3>
+<center>
+<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(pivottabler)</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Pivot Table 1</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>pt1 <span class="ot">&lt;-</span> PivotTable<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>pt1<span class="sc">$</span><span class="fu">addData</span>(pivot_data) </span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>pt1<span class="sc">$</span><span class="fu">addColumnDataGroups</span>(<span class="st">&quot;Online&quot;</span>)</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>pt1<span class="sc">$</span><span class="fu">addRowDataGroups</span>(<span class="st">&quot;Personal Loan&quot;</span>)</span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a>pt1<span class="sc">$</span><span class="fu">defineCalculation</span>(<span class="at">calculationName=</span><span class="st">&quot;Total&quot;</span>, <span class="at">summariseExpression=</span><span class="st">&quot;n()&quot;</span>)</span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>pt1<span class="sc">$</span><span class="fu">renderPivot</span>()</span></code></pre></div>
+<div id="htmlwidget-7f945ad762a72c70c8de" style="width:auto;height:auto;" class="pivottabler html-widget"></div>
+<script type="application/json" data-for="htmlwidget-7f945ad762a72c70c8de">{"x":{"tableCss":".Table {display: table; border-collapse: collapse; }\r\n.ColumnHeader {font-family: Arial; font-size: 0.75em; border: 1px solid lightgray; vertical-align: middle; font-weight: bold; background-color: #F2F2F2; padding: 2px; text-align: center; }\r\n.RowHeader {font-family: Arial; font-size: 0.75em; border: 1px solid lightgray; vertical-align: middle; font-weight: bold; background-color: #F2F2F2; padding: 2px 8px 2px 2px; text-align: left; }\r\n.Cell {font-family: Arial; font-size: 0.75em; padding: 2px 2px 2px 8px; border: 1px solid lightgray; vertical-align: middle; text-align: right; }\r\n.OutlineColumnHeader {font-family: Arial; font-size: 0.75em; border: 1px solid lightgray; vertical-align: middle; font-weight: bold; background-color: #F2F2F2; padding: 2px; text-align: center; }\r\n.OutlineRowHeader {font-family: Arial; font-size: 0.75em; border: 1px solid lightgray; vertical-align: middle; font-weight: bold; background-color: #F2F2F2; padding: 2px 8px 2px 2px; text-align: left; }\r\n.OutlineCell {font-family: Arial; font-size: 0.75em; padding: 2px 2px 2px 8px; border: 1px solid lightgray; vertical-align: middle; text-align: right; background-color: #F8F8F8; font-weight: bold; }\r\n.Total {font-family: Arial; font-size: 0.75em; padding: 2px 2px 2px 8px; border: 1px solid lightgray; vertical-align: middle; text-align: right; }\r\n","tableHtml":"<table class=\"Table\">\n  <tr>\n    <th class=\"RowHeader\">&nbsp;<\/th>\n    <th class=\"ColumnHeader\">Inactive Online<\/th>\n    <th class=\"ColumnHeader\">Active Online<\/th>\n    <th class=\"ColumnHeader\">Total<\/th>\n  <\/tr>\n  <tr>\n    <th class=\"RowHeader\">No Personal Loan<\/th>\n    <td class=\"Cell\">1127<\/td>\n    <td class=\"Cell\">1626<\/td>\n    <td class=\"Total\">2753<\/td>\n  <\/tr>\n  <tr>\n    <th class=\"RowHeader\">Personal Loan<\/th>\n    <td class=\"Cell\">109<\/td>\n    <td class=\"Cell\">188<\/td>\n    <td class=\"Total\">297<\/td>\n  <\/tr>\n  <tr>\n    <th class=\"RowHeader\">Total<\/th>\n    <td class=\"Total\">1236<\/td>\n    <td class=\"Total\">1814<\/td>\n    <td class=\"Total\">3050<\/td>\n  <\/tr>\n<\/table>","settings":[]},"evals":[],"jsHooks":[]}</script>
+<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Pivot Table 1</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>pt2 <span class="ot">&lt;-</span> PivotTable<span class="sc">$</span><span class="fu">new</span>()</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>pt2<span class="sc">$</span><span class="fu">addData</span>(pivot_data) </span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>pt2<span class="sc">$</span><span class="fu">addColumnDataGroups</span>(<span class="st">&quot;CreditCard&quot;</span>)</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>pt2<span class="sc">$</span><span class="fu">addRowDataGroups</span>(<span class="st">&quot;Personal Loan&quot;</span>)</span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>pt2<span class="sc">$</span><span class="fu">defineCalculation</span>(<span class="at">calculationName=</span><span class="st">&quot;Total&quot;</span>, <span class="at">summariseExpression=</span><span class="st">&quot;n()&quot;</span>)</span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>pt2<span class="sc">$</span><span class="fu">renderPivot</span>()</span></code></pre></div>
+<div id="htmlwidget-2cce3d22537b564098df" style="width:auto;height:auto;" class="pivottabler html-widget"></div>
+<script type="application/json" data-for="htmlwidget-2cce3d22537b564098df">{"x":{"tableCss":".Table {display: table; border-collapse: collapse; }\r\n.ColumnHeader {font-family: Arial; font-size: 0.75em; border: 1px solid lightgray; vertical-align: middle; font-weight: bold; background-color: #F2F2F2; padding: 2px; text-align: center; }\r\n.RowHeader {font-family: Arial; font-size: 0.75em; border: 1px solid lightgray; vertical-align: middle; font-weight: bold; background-color: #F2F2F2; padding: 2px 8px 2px 2px; text-align: left; }\r\n.Cell {font-family: Arial; font-size: 0.75em; padding: 2px 2px 2px 8px; border: 1px solid lightgray; vertical-align: middle; text-align: right; }\r\n.OutlineColumnHeader {font-family: Arial; font-size: 0.75em; border: 1px solid lightgray; vertical-align: middle; font-weight: bold; background-color: #F2F2F2; padding: 2px; text-align: center; }\r\n.OutlineRowHeader {font-family: Arial; font-size: 0.75em; border: 1px solid lightgray; vertical-align: middle; font-weight: bold; background-color: #F2F2F2; padding: 2px 8px 2px 2px; text-align: left; }\r\n.OutlineCell {font-family: Arial; font-size: 0.75em; padding: 2px 2px 2px 8px; border: 1px solid lightgray; vertical-align: middle; text-align: right; background-color: #F8F8F8; font-weight: bold; }\r\n.Total {font-family: Arial; font-size: 0.75em; padding: 2px 2px 2px 8px; border: 1px solid lightgray; vertical-align: middle; text-align: right; }\r\n","tableHtml":"<table class=\"Table\">\n  <tr>\n    <th class=\"RowHeader\">&nbsp;<\/th>\n    <th class=\"ColumnHeader\">No Credit Card<\/th>\n    <th class=\"ColumnHeader\">Credit Card<\/th>\n    <th class=\"ColumnHeader\">Total<\/th>\n  <\/tr>\n  <tr>\n    <th class=\"RowHeader\">No Personal Loan<\/th>\n    <td class=\"Cell\">1926<\/td>\n    <td class=\"Cell\">827<\/td>\n    <td class=\"Total\">2753<\/td>\n  <\/tr>\n  <tr>\n    <th class=\"RowHeader\">Personal Loan<\/th>\n    <td class=\"Cell\">202<\/td>\n    <td class=\"Cell\">95<\/td>\n    <td class=\"Total\">297<\/td>\n  <\/tr>\n  <tr>\n    <th class=\"RowHeader\">Total<\/th>\n    <td class=\"Total\">2128<\/td>\n    <td class=\"Total\">922<\/td>\n    <td class=\"Total\">3050<\/td>\n  <\/tr>\n<\/table>","settings":[]},"evals":[],"jsHooks":[]}</script>
+</center>
+</div>
+<div id="d.-compute-the-following-quantities" class="section level3">
+<h3>d. Compute the following quantities</h3>
+<div id="i." class="section level4">
+<h4>i.</h4>
+<p><span class="math display">\[P (CC=1 | Loan=1) = \\ \dfrac{P (CC=1
+\cap Loan=1)}{P (Loan=1)} = \\ \dfrac{95}{297} = 31.99 \%  \]</span></p>
+</div>
+<div id="ii." class="section level4">
+<h4>ii.</h4>
+<p><span class="math display">\[P (Online=1 | Loan=1) = \\ \dfrac{P
+(Online=1 \cap Loan=1)}{P (Loan=1)} = \\ \dfrac{188}{297} = 63.30
+\%\]</span></p>
+</div>
+<div id="iii." class="section level4">
+<h4>iii.</h4>
+<p><span class="math display">\[P (Loan=1) =  \dfrac{297}{3050} = 9.74
+\%\]</span></p>
+</div>
+<div id="iv." class="section level4">
+<h4>iv.</h4>
+<p><span class="math display">\[P (CC=1 | Loan=0) = \\ \dfrac{P (CC=1
+\cap Loan=0)}{P (Loan=0)} = \\ \dfrac{827}{2753} = 30.04 \%\]</span></p>
+</div>
+<div id="v." class="section level4">
+<h4>v.</h4>
+<p><span class="math display">\[P (Online=1 | Loan=0) = \\ \dfrac{P
+(Online=1 \cap Loan=0)}{P (Loan=0)} = \\ \dfrac{1626}{2753} = 59.06
+\%\]</span></p>
+</div>
+<div id="vi." class="section level4">
+<h4>vi.</h4>
+<p><span class="math display">\[P (Loan=0) = \dfrac{2753}{3050}
+=  90.26\%\]</span> ### e. Compute naive Bayes Probability <span class="math inline">\(P(Loan=1|CC=1,Online=1)\)</span></p>
+</div>
+</div>
+<div id="f." class="section level3">
+<h3>f.</h3>
+</div>
+<div id="g." class="section level3">
+<h3>g.</h3>
+</div>
+</div>
 </div>
 <div id="references" class="section level1">
 <h1><span style="color: #1c6155;">References</span></h1>
