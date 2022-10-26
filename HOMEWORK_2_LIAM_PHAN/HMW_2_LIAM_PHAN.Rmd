@@ -178,6 +178,10 @@ validation <- validation[,-c("ID","ZIP Code")]
 training$`Personal Loan` <- as.factor(training$`Personal Loan`) 
 validation$`Personal Loan` <- as.factor(validation$`Personal Loan`) 
 
+# Education As Factor
+training$Education <- as.factor(training$Education) 
+validation$Education <- as.factor(validation$Education) 
+
 # Education One-Hot Encoding
 Education_As_Dummy_Training <- model.matrix(~0+training$Education)
 Education_As_Dummy_Validation <- model.matrix(~0+validation$Education)
@@ -199,6 +203,7 @@ library(class)
 # KNN Model on a specific customer not in Data
 Customer_Test <- data.frame("Age"=40,"Experience"=10,"Income"=84,"Famiy"=2,"CCAvg"=2,"Mortgage"=0,"Securities Account"=0,"CD Account"=0,"Online"=1,"Credit Card"=1,"Education_1"=0,"Education_2"=1,"Education_3"=0, check.names=FALSE)
 
+## KNN Training for Customer
 predictions_customer <- knn(train=training[,-c("Personal Loan")],test = Customer_Test, cl = training$`Personal Loan`, k=1)
 
 predictions_customer <- as.factor(predictions_customer)
@@ -267,19 +272,99 @@ print(paste("Best K for Highest Accuracy is",highest_K))
 
 ```
 
+### c. Show the confusion matrix for the validation data that results from using best K
+
 ```{r 8, echo=TRUE}
 
 # Computing Confusion Matrix with K=3
 predictions_k3 <- knn(train=training[,-c("Personal Loan")],test = validation[,-c("Personal Loan")], cl = training$`Personal Loan`, k=3)
 
+# As Factor Predictions
+predictions_k3 <- as.factor(predictions_k3)
+
+# Relabel 0 and 1 to "Success" and "Fail
+levels(predictions_k3)<- c("Fail","Success")
+levels(validation$`Personal Loan`) <- c("Fail","Success")
+
 # Confusion Matrix
+Confusion_Matrix_k3 <- confusionMatrix(data = predictions_k3, reference = validation$`Personal Loan`)
 
+# Plot
+draw_confusion_matrix <- function(cm) {
 
+  layout(matrix(c(1,1,2)))
+  par(mar=c(2,2,2,2))
+  plot(c(100, 345), c(300, 450), type = "n", xlab="", ylab="", xaxt='n', yaxt='n')
+  title('CONFUSION MATRIX', cex.main=2)
 
+  # create the matrix 
+  rect(150, 430, 240, 370, col='#1c6155')
+  text(195, 435, 'Fail', cex=1.2)
+  rect(250, 430, 340, 370, col='#77baae')
+  text(295, 435, 'Success', cex=1.2)
+  text(125, 370, 'Predicted', cex=1.3, srt=90, font=2)
+  text(245, 450, 'Actual', cex=1.3, font=2)
+  rect(150, 305, 240, 365, col='#77baae')
+  rect(250, 305, 340, 365, col='#1c6155')
+  text(140, 400, 'Fail', cex=1.2, srt=90)
+  text(140, 335, 'Succes', cex=1.2, srt=90)
+
+  # add in the cm results 
+  res <- as.numeric(cm$table)
+  text(195, 400, res[1], cex=1.6, font=2, col='white')
+  text(195, 335, res[2], cex=1.6, font=2, col='white')
+  text(295, 400, res[3], cex=1.6, font=2, col='white')
+  text(295, 335, res[4], cex=1.6, font=2, col='white')
+
+  # add in the specifics 
+  plot(c(100, 0), c(100, 0), type = "n", xlab="", ylab="", main = "DETAILS", xaxt='n', yaxt='n')
+  text(10, 85, names(cm$byClass[1]), cex=1.2, font=2)
+  text(10, 70, round(as.numeric(cm$byClass[1]), 3), cex=1.2)
+  text(30, 85, names(cm$byClass[2]), cex=1.2, font=2)
+  text(30, 70, round(as.numeric(cm$byClass[2]), 3), cex=1.2)
+  text(50, 85, names(cm$byClass[5]), cex=1.2, font=2)
+  text(50, 70, round(as.numeric(cm$byClass[5]), 3), cex=1.2)
+  text(70, 85, names(cm$byClass[6]), cex=1.2, font=2)
+  text(70, 70, round(as.numeric(cm$byClass[6]), 3), cex=1.2)
+  text(90, 85, names(cm$byClass[7]), cex=1.2, font=2)
+  text(90, 70, round(as.numeric(cm$byClass[7]), 3), cex=1.2)
+
+  # add in the accuracy information 
+  text(30, 35, names(cm$overall[1]), cex=1.5, font=2)
+  text(30, 20, round(as.numeric(cm$overall[1]), 3), cex=1.4)
+  text(70, 35, names(cm$overall[2]), cex=1.5, font=2)
+  text(70, 20, round(as.numeric(cm$overall[2]), 3), cex=1.4)
+}  
+draw_confusion_matrix(Confusion_Matrix_k3)
 
 ```
 
+### d. Consider the following customer:
 
+> Age = 40, Experience = 10, Income = 84, Family = 2, CCAvg = 2, Education_1 = 0, Education_2 = 1, Education_3 = 0, Mortgage = 0, Securities Account = 0, CD Account = 0, Online = 1, and Credit Card = 1. 
+
+```{r 9, echo=TRUE}
+
+# KNN Model on a specific customer not in Data
+Customer_Test_2 <- data.frame("Age"=40,"Experience"=10,"Income"=84,"Famiy"=2,"CCAvg"=2,"Mortgage"=0,"Securities Account"=0,"CD Account"=0,"Online"=1,"Credit Card"=1,"Education_1"=0,"Education_2"=1,"Education_3"=0, check.names=FALSE)
+
+## KNN Training for Customer
+predictions_customer_2 <- knn(train=training[,-c("Personal Loan")],test = Customer_Test_2, cl = training$`Personal Loan`, k=highest_K)
+
+predictions_customer_2 <- as.factor(predictions_customer_2)
+
+# Append Predictions to Customer not in Data
+Customer_Test_2$Predicted <- predictions_customer_2
+
+```
+
+```{r 10, echo=TRUE}
+
+# Table Customer after Predictions
+flextable(head(Customer_Test_2)) %>% 
+  fontsize(size = 7, part = "all")
+
+```
 
 
 # <span style="color: #1c6155;">Exercise 3.</span>
