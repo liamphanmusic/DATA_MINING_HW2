@@ -352,6 +352,7 @@ Customer_Test_2 <- data.frame("Age"=40,"Experience"=10,"Income"=84,"Famiy"=2,"CC
 predictions_customer_2 <- knn(train=training[,-c("Personal Loan")],test = Customer_Test_2, cl = training$`Personal Loan`, k=highest_K)
 
 predictions_customer_2 <- as.factor(predictions_customer_2)
+levels(predictions_customer_2) <- c("Fail","Succes")
 
 # Append Predictions to Customer not in Data
 Customer_Test_2$Predicted <- predictions_customer_2
@@ -365,6 +366,12 @@ flextable(head(Customer_Test_2)) %>%
   fontsize(size = 7, part = "all")
 
 ```
+
+## e. Repartition the data | 50%-30%-20%
+
+
+
+
 
 
 # <span style="color: #1c6155;">Exercise 3.</span>
