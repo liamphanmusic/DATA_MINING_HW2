@@ -193,36 +193,16 @@ validation <- validation[,-c("Education")]
 training = training %>% rename( Education_1 = `training$Education1` , Education_2 = `training$Education2`, Education_3 = `training$Education3`)
 validation = validation %>% rename( Education_1 = `validation$Education1` , Education_2 = `validation$Education2`, Education_3 = `validation$Education3`)
 
-# Checking Structure
-str(training)
-str(validation)
-
-# View Data
-flextable(head(training)) %>% 
-  fontsize(size = 7, part = "all")
-
-flextable(head(validation)) %>% 
-  fontsize(size = 7, part = "all")
-
 # KNN Model using class package
 library(class)
-
-predictions <- knn(train=training,test = validation, cl = training$`Personal Loan`, k=1)
-predictions <- as.factor(predictions)
-levels(predictions) <- c("Fail","Success")
-
-# Append Predictions to Validation Set
-validation$Predicted <- predictions
-
-# Correct Factors of previous Validation
-levels(validation$`Personal Loan`) <- c("Fail","Success")
 
 # KNN Model on a specific customer not in Data
 Customer_Test <- data.frame("Age"=40,"Experience"=10,"Income"=84,"Famiy"=2,"CCAvg"=2,"Mortgage"=0,"Securities Account"=0,"CD Account"=0,"Online"=1,"Credit Card"=1,"Education_1"=0,"Education_2"=1,"Education_3"=0, check.names=FALSE)
 
-# KNN Model on specific customer not in Data
 predictions_customer <- knn(train=training[,-c("Personal Loan")],test = Customer_Test, cl = training$`Personal Loan`, k=1)
+
 predictions_customer <- as.factor(predictions_customer)
+
 levels(predictions_customer) <- c("Fail","Success")
 
 # Append Predictions to Customer not in Data
@@ -245,12 +225,60 @@ flextable(head(Customer_Test)) %>%
 
 </center>
 
+> This Customer would be classified as not getting a Personnal Loan (Fail)
+
+### b. What is the Choice of Κ that balances between overfitting and ignoring the predictor information?
+
 ```{r 7, echo=TRUE}
+
+# Load Caret 
+library(caret)
+
+# Number of iterations
+iterations = 20
+
+# Dataframe with 2 columns: k and accuracy
+accuracy.df <- data.frame(k=seq(1,iterations,1),accuracy=rep(0,iterations))
+
+# Compute K-NN for different k on validation
+for(i in 1:iterations){
+  # Testing K-NN
+  knn.prediction <- knn(train = training[,-c("Personal Loan")], test=validation[,-c("Personal Loan")] , cl=training$`Personal Loan`, k=iterations)
+  # Storing into the accuracy.df results
+  accuracy.df[i,2] <- confusionMatrix(knn.prediction, validation$`Personal Loan`)$overall[1]
+}
+
+# Table of Accuracy
+flextable(accuracy.df) %>% 
+  fontsize(size = 12, part = "all")
+
+# Ploting the K and accuracy together
+ggplot(accuracy.df) +
+ aes(x = k, y = accuracy) +
+ geom_line(size = 0.5, colour = "#112446") +
+ labs(x = "Number of K", 
+ y = "Accuracy (Between Training and Validation)", title = "K-NN Accuracy regarding parameter K") +
+ theme_minimal()
+
+# Choosing Efficient K
+highest_K <- which.max(accuracy.df$accuracy)
+
+print(paste("Best K for Highest Accuracy is",highest_K))
+
+```
+
+```{r 8, echo=TRUE}
+
+# Computing Confusion Matrix with K=3
+predictions_k3 <- knn(train=training[,-c("Personal Loan")],test = validation[,-c("Personal Loan")], cl = training$`Personal Loan`, k=3)
+
+# Confusion Matrix
 
 
 
 
 ```
+
 
 
 
