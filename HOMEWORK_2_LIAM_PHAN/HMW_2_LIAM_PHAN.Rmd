@@ -581,7 +581,7 @@ paste(training_8_prop,"% In Training",validation_8_prop,"% In Validation")
 
 ```
 
-### a. Pivot Table
+### a) Pivot Table
 
 <center>
 
@@ -610,15 +610,15 @@ pt$renderPivot()
 
 </center>
 
-### b. Probability Customer who owns a bank credit acrd and is actively using online banking services accept the loan offer?
+### b) Probability Customer who owns a bank credit acrd and is actively using online banking services accept the loan offer?
 
 > Using Bayes Theorem
 
-$$P(Loan=1 | CC=1 \cap Online=1) =  \\ \dfrac{P(Loan=1 \cap CC=1 \cap Online=1)}{P(CC=1 \cap Online=1)} = \\ \dfrac{\dfrac{54}{3050}}{\dfrac{506+54}{3050}} =\dfrac{54}{560} = 9.642 \% $$
+$$\small P(Loan=1 | CC=1 \cap Online=1) =  \\ \small \dfrac{P(Loan=1 \cap CC=1 \cap Online=1)}{P(CC=1 \cap Online=1)} = \\ \small \dfrac{\dfrac{54}{3050}}{\dfrac{506+54}{3050}} =\dfrac{54}{560} = 9.642 \% $$
 
 > Thus, there is 9.642% probability that this kind of customer would accept the loan offer.
 
-### c. Pivot Table in 2 Versions
+### c) Pivot Table in 2 Versions
 
 <center>
 
@@ -646,32 +646,53 @@ pt2$renderPivot()
 
 </center>
 
-### d. Compute the following quantities
+### d) Compute the following quantities
 
 #### i. 
 
-$$P (CC=1 | Loan=1) = \\ \dfrac{P (CC=1 \cap Loan=1)}{P (Loan=1)} = \\ \dfrac{95}{297} = 31.99 \%  $$
+$$\small P (CC=1 | Loan=1) = \\ \small \dfrac{P (CC=1 \cap Loan=1)}{P (Loan=1)} = \\ \small \dfrac{95}{297} = 31.99 \%  $$
 
 #### ii.
 
-$$P (Online=1 | Loan=1) = \\ \dfrac{P (Online=1 \cap Loan=1)}{P (Loan=1)} = \\ \dfrac{188}{297} = 63.30 \%$$
+$$\small P (Online=1 | Loan=1) = \\ \small \dfrac{P (Online=1 \cap Loan=1)}{P (Loan=1)} = \\\small  \dfrac{188}{297} = 63.30 \%$$
 
 #### iii.
 
-$$P (Loan=1) =  \dfrac{297}{3050} = 9.74 \%$$
+$$\small P (Loan=1) =  \dfrac{297}{3050} = 9.74 \%$$
 
 #### iv.
 
-$$P (CC=1 | Loan=0) = \\ \dfrac{P (CC=1 \cap Loan=0)}{P (Loan=0)} = \\ \dfrac{827}{2753} = 30.04 \%$$
+$$\small P (CC=1 | Loan=0) = \\\small \dfrac{P (CC=1 \cap Loan=0)}{P (Loan=0)} = \\\small \dfrac{827}{2753} = 30.04 \%$$
 
 #### v.
 
-$$P (Online=1 | Loan=0) = \\ \dfrac{P (Online=1 \cap Loan=0)}{P (Loan=0)} = \\ \dfrac{1626}{2753} = 59.06 \%$$
+$$\small P (Online=1 | Loan=0) = \\ \small \dfrac{P (Online=1 \cap Loan=0)}{P (Loan=0)} = \\ \small \dfrac{1626}{2753} = 59.06 \%$$
 
 #### vi.
 
-$$P (Loan=0) = \dfrac{2753}{3050} =  90.26\%$$
-### e. Compute naive Bayes Probability 
+$$\small P (Loan=0) = \dfrac{2753}{3050} =  90.26\%$$
+
+
+
+### e) Compute naive Bayes Probability 
+
+$$\small P(Loan=1|CC=1,Online=1)$$
+Using the naive Bayes Probability give us the following computation:
+
+$$\small P(Loan=1|CC=1,Online=1) = \\ \small P(Loan=1)*P(Loan=1|CC=1)*P(Loan=1|Online=1)=\\ \small  9.74\% *31.99\% *63.30 \% = 1.97\% $$ 
+
+
+### f) Accurate Estimate
+
+
+
+
+
+
+
+
+
+### g) Run Model and Comparisons
 
 $$P(Loan=1|CC=1,Online=1)$$
 
@@ -685,26 +706,14 @@ training_8$CreditCard <- factor(training_8$CreditCard,levels = c(0,1),labels=c("
 training_8$`Personal Loan` <- factor(training_8$`Personal Loan`,levels = c(0,1),labels=c("No Personal Loan","Personal Loan"))
 
 Naivebayes <-  naive_bayes(training_8$`Personal Loan` ~ training_8$CreditCard + training_8$Online, data=training_8)
+
 summary(Naivebayes)
+
 Naivebayes
-
-Computed_Naive <- 
-
 
 ```
 
-### f. Accurate Estimate
-
-
-
-
-
-
-
-
-
-### g. Run Model and Comparisons
-
+$$\small P(Loan=1|CC=1,Online=1) =  \small 0.09737705*0.3198653*0.6329966 \\ \small= 0.01971629 = 1.97\% $$ 
 
 
 
