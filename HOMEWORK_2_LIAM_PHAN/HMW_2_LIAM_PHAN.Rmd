@@ -677,10 +677,18 @@ $$P(Loan=1|CC=1,Online=1)$$
 
 ```{r a5, echo=TRUE}
 
+library(naivebayes)
 
+# As factor for Loan
+training_8$Online <- factor(training_8$Online,levels = c(0,1),labels=c("Inactive Online","Active Online"))
+training_8$CreditCard <- factor(training_8$CreditCard,levels = c(0,1),labels=c("No Credit Card","Credit Card"))
+training_8$`Personal Loan` <- factor(training_8$`Personal Loan`,levels = c(0,1),labels=c("No Personal Loan","Personal Loan"))
 
+Naivebayes <-  naive_bayes(training_8$`Personal Loan` ~ training_8$CreditCard + training_8$Online, data=training_8)
+summary(Naivebayes)
+Naivebayes
 
-
+Computed_Naive <- 
 
 
 ```
