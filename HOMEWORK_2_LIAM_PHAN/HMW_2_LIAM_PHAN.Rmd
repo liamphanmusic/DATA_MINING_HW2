@@ -409,7 +409,7 @@ flextable(head(Customer_Test_2)) %>%
 
 ```
 
-### e. Repartition the data | 50%-30%-20%
+### e. Repartition the data (50%-30%-20%)
 
 ```{r 11, echo=TRUE}
 
@@ -685,10 +685,27 @@ $$P(Loan=1|CC=1,Online=1)$$
 
 ```
 
-### f.
+### f. Accurate Estimate
 
 
-### g.
+
+
+
+
+
+
+
+### g. Run Model and Comparisons
+
+
+
+
+
+
+
+
+
+
 
 # <span style="color: #1c6155;">References</span>
 
