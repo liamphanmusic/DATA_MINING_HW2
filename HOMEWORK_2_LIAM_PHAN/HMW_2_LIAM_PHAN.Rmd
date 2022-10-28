@@ -100,6 +100,9 @@ If we take a look at the Decile-wise lift chart, we see that the 6th decile (app
 
 > Why use this two-stage process for predicting sales--why not simply develop a model for predicting profit for the 1000 new leads?
 
+
+
+
 # <span style="color: #1c6155;">Exercise 2.</span> 
 
 ## 7.2 Personnal Loan Acceptance
@@ -600,8 +603,8 @@ pivot_data$`Personal Loan` <- factor(pivot_data$`Personal Loan`,levels = c(0,1),
 pt <- PivotTable$new()
 pt$addData(pivot_data) 
 pt$addColumnDataGroups("CreditCard")
-pt$addRowDataGroups("Personal Loan")
 pt$addRowDataGroups("Online")
+pt$addRowDataGroups("Personal Loan")
 pt$defineCalculation(calculationName="Total", summariseExpression="n()")
 pt$renderPivot()
 
@@ -613,7 +616,7 @@ pt$renderPivot()
 
 > Using Bayes Theorem
 
-$$\small P(Loan=1 | CC=1 \cap Online=1) =  \\ \small \dfrac{P(Loan=1 \cap CC=1 \cap Online=1)}{P(CC=1 \cap Online=1)} = \\ \small \dfrac{\dfrac{54}{3050}}{\dfrac{506+54}{3050}} =\dfrac{54}{560} = 9.642 \% $$
+$$\small P(Loan=1 | CC=1 \cap Online=1) =  \\ \small \dfrac{P(Loan=1 \cap CC=1 \cap Online=1)}{P(CC=1 \cap Online=1)} = \\ \small \dfrac{54}{506+54} =\dfrac{54}{560} = 9.642 \% $$
 
 > Thus, there is 9.642% probability that this kind of customer would accept the loan offer.
 
