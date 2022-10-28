@@ -39,7 +39,6 @@ library(corrplot) # Correlation Plot
 library(RColorBrewer) # For Color Palette
 library(rmdformats) # Theme of HTML
 library(manipulateWidget) # Handling multiple plotly graphs
-library(caTools) # Split Training and Validation Sets
 library(flextable) # Show Table
 library(class) # K-NN
 
@@ -59,7 +58,7 @@ library(class) # K-NN
 
 Without any predictive modeling, we can roughly estimated the profit with the following formula: 
 
-$$ Profit_{Estimated} = 1000*\$2128 = \$2128000  $$
+$$ Sales_{Estimated} = 1000*\$2128 = \$2128000  $$
 
 <br />
 
@@ -71,7 +70,7 @@ $$ Costs_{Estimated} = 1000*\$2500 = \$2500000   $$
 
 Leading to negative Total Profit of... 
 
-$$ TotalProfit_{Estimated} = Profit_{Estimated} - Costs_{Estimated} \\ = \$2128000 - \$2500000 = - \$372000  $$
+$$ TotalProfit_{Estimated} = Sales_{Estimated} - Costs_{Estimated} \\ = \$2128000 - \$2500000 = - \$372000  $$
 
 <br />
 
@@ -264,15 +263,15 @@ set.seed(1)
 library(caret)
 
 # Number of iterations
-iterations = 20
+max_iterations = 20
 
 # Dataframe with 2 columns: k and accuracy
 accuracy.df <- data.frame(k=seq(1,iterations,1),accuracy=rep(0,iterations))
 
 # Compute K-NN for different k on validation
-for(i in 1:iterations){
+for(i in 1:max_iterations){
   # Testing K-NN
-  knn.prediction <- knn(train = training_norm[,-c("Personal Loan")], test=validation_norm[,-c("Personal Loan")] , cl=training_norm$`Personal Loan`, k=iterations)
+  knn.prediction <- knn(train = training_norm[,-c("Personal Loan")], test=validation_norm[,-c("Personal Loan")] , cl=training_norm$`Personal Loan`, k=i)
   # Storing into the accuracy.df results
   accuracy.df[i,2] <- confusionMatrix(knn.prediction, validation$`Personal Loan`)$overall[1]
 }
@@ -688,10 +687,6 @@ $$\small P(Loan=1|CC=1,Online=1) = \\ \small P(Loan=1)*P(Loan=1|CC=1)*P(Loan=1|O
 
 
 
-
-
-
-
 ### g) Run Model and Comparisons
 
 $$P(Loan=1|CC=1,Online=1)$$
@@ -714,14 +709,6 @@ Naivebayes
 ```
 
 $$\small P(Loan=1|CC=1,Online=1) =  \small 0.09737705*0.3198653*0.6329966 \\ \small= 0.01971629 = 1.97\% $$ 
-
-
-
-
-
-
-
-
 
 
 # <span style="color: #1c6155;">References</span>
