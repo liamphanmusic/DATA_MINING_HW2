@@ -616,7 +616,7 @@ pt$renderPivot()
 
 > Using Bayes Theorem
 
-$$\small P(Loan=1 | CC=1 \cap Online=1) =  \\ \small \dfrac{P(Loan=1 \cap CC=1 \cap Online=1)}{P(CC=1 \cap Online=1)} = \\ \small \dfrac{54}{506+54} =\dfrac{54}{560} = 9.642 \% $$
+$$\small P(Loan=1 | CC=1 \cap Online=1) = \\ \small \dfrac{54}{506+54} =\dfrac{54}{560} = 9.642 \% $$ 
 
 > Thus, there is 9.642% probability that this kind of customer would accept the loan offer.
 
