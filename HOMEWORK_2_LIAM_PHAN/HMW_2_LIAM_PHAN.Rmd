@@ -39,6 +39,10 @@ library(rmdformats) # Theme of HTML
 library(flextable) # Show Table
 library(class) # K-NN
 library(summarytools) # Beautiful and Efficient Summary for Dataset
+library(pivottabler) # Pivot Table
+library(naivebayes) # Naive Bayes Function
+library(caret) # Confusion Matrix
+
 
 ```
 
@@ -56,19 +60,19 @@ library(summarytools) # Beautiful and Efficient Summary for Dataset
 
 Without any predictive modeling, we can roughly estimated the profit with the following formula: 
 
-$$ Sales_{Estimated} = 1000*\$2128 = \$2128000  $$
+$$ Sales_{Estimated} = 1000*\$2500 = \$250'000  $$
 
 <br />
 
 But the company will also have expenditures related to their sales, which would negatively impact the Total Profit. The sales effort would be:
 
-$$ Costs_{Estimated} = 1000*\$2500 = \$2500000   $$
+$$ Costs_{Estimated} = 1000*\$2500 = \$250'0000   $$
 
 <br />
 
 Leading to Total Profit of... 
 
-$$ TotalProfit_{Estimated} = Sales_{Estimated} - Costs_{Estimated} \\ = \$2128000 - \$2500000 = - \$372000  $$
+$$ TotalProfit_{Estimated} = Sales_{Estimated} - Costs_{Estimated} \\ = \$250'000 - \$250'000 = 0  $$
 
 <br />
 
@@ -76,9 +80,9 @@ $$ TotalProfit_{Estimated} = Sales_{Estimated} - Costs_{Estimated} \\ = \$212800
 
 > If the firm wants the average profit on each sale to at least double the sales effort cost, and applies an appopriate cutoff with this predictive model to a new set of 1000 leads, how far down the new list of 1000 should it proceed (how many deciles)?
 
-If we want to double the average profit on each sale, we should take the first decile (10%) on the Decile-wise lift chart which double the mean. 
+$$ Ratio_{Estimated} = \dfrac{2*\$2500}{\$2500} = 2 $$
 
-$$ Ratio_{Estimated} = \dfrac{2*\$2500}{\$2128} = 2.35 $$
+If we want to double the average profit on each sale, we should take the first decile (10%) on the Decile-wise lift chart which double the mean-response. 
 
 <br />
 
@@ -88,9 +92,9 @@ $$ Ratio_{Estimated} = \dfrac{2*\$2500}{\$2128} = 2.35 $$
 
 We want the cutoff to be $2500: 
 
-$$ Ratio_{Estimated} = \dfrac{\$2500}{\$2128} = 1.17 $$
+$$ Ratio_{Estimated} = \dfrac{\$2500}{\$2500} = 1 $$
 
-If we take a look at the Decile-wise lift chart, we see that until the 6th decile we would get a mean response of 1 for all those included decile until 6th one. 
+If we take a look at the Decile-wise lift chart, we see that until the 6th decile we would get a mean response of 1 for all those included deciles until 6th one. 
 
 <br />
 
@@ -105,7 +109,7 @@ This two-stage process for predicting sales already give possible answer to the 
 
 ## 7.2 Personnal Loan Acceptance
 
-### Loading Dataset and Basic Data Quality Check
+#### Loading Dataset and Basic Data Quality Check
 
 ```{r 2, echo=FALSE, warning=FALSE, results='hide'}
 
@@ -130,7 +134,7 @@ str(UniversalBank1)
 
 <center>
 
-### Summary of Universal.csv Dataset
+#### Summary of Universal.csv Dataset
 
 ```{r 31,echo=FALSE,warning=FALSE}
 
@@ -152,7 +156,7 @@ gg_miss_var(UniversalBank1, show_pct = TRUE)
 
 </center>
 
-### Partition The Data Into Training (60%) and Validation (40%) Sets
+#### Partition The Data Into Training (60%) and Validation (40%) Sets
 
 The Following Code Set Seed to 1 and partition the dataset in 2 sets, training and validation. 
 
@@ -220,7 +224,6 @@ training = training %>% rename( Education_1 = `training$Education1` , Education_
 validation = validation %>% rename( Education_1 = `validation$Education1` , Education_2 = `validation$Education2`, Education_3 = `validation$Education3`)
 
 # Preprocess for Data Normalization
-library(caret)
 
 training_norm <- training
 validation_norm <- validation
@@ -249,7 +252,7 @@ Customer_Test$Predicted <- predictions_customer
 
 ```
 
-### Data of the Customer we want to predict after Normalization
+#### Data of the Customer we want to predict after Normalization
 
 ```{r 61, echo=TRUE}
 
@@ -259,7 +262,7 @@ flextable(head(Customer_Test_norm)) %>%
 
 ```
 
-### Data of the Customer we want to predict after Prediction
+#### Data of the Customer we want to predict after Prediction
 
 ```{r 6, echo=TRUE}
 
@@ -340,7 +343,7 @@ predictions_k <- knn(train=training_norm[,-c("Personal Loan")],test = validation
 # Confusion Matrix
 Confusion_Matrix_k <- confusionMatrix(data = predictions_k, reference = validation$`Personal Loan`)
 
-# Plotting Matrix Function
+# Plotting Matrix Function (In the References)
 draw_confusion_matrix <- function(cm) {
 
   layout(matrix(c(1,1,2)))
@@ -395,7 +398,9 @@ draw_confusion_matrix(Confusion_Matrix_k)
 </center>
 
 > This Confusion Matrix has a Accuracy of 0.968 and Specifity of 0.738, lower than the Sensitivity. Kappa is equal to 0.793.
-Among all Confusion Matrix, this one has the highest Specifity and Kappa. This Confusion Matrix has the highest F1 but really close to the last Confusion Matrix. 
+Among all Confusion Matrix, this one has the highest Specifity and Kappa. This Confusion Matrix has the highest F1 but really close to the last Confusion Matrix. Since the Specifity is the True negative rate, we can see that this model is not that good at predicting the Loan when it is actually a Loan. We can see that 48 customers were predicted no Loan while they actually had Loan, thus the following ratio:
+
+$$ \dfrac{135}{135+48} = 0.738 = Specificity = True \ \ Negative \ \ Rate   $$ 
 
 ### d. Consider the following customer:
 
@@ -423,12 +428,16 @@ Customer_Test_2$Predicted <- predictions_customer_2
 ```{r 10, echo=TRUE}
 
 # Table Customer after Predictions
-flextable(head(Customer_Test_2)) %>% 
-  fontsize(size = 7, part = "all")
+flextable(head(Customer_Test_2)) %>%
+  fontsize(size = 7, part = "all") 
 
 ```
 
+> This Customer would also be classified as not getting a Loan (No Loan).
+
 ### e. Repartition the data (50%-30%-20%)
+
+Now we want to partition the data in the following proportions: 50% in Training, 30% in Validation and 20% in Testing.
 
 ```{r 11, echo=TRUE}
 
@@ -450,6 +459,10 @@ Prop_test <- (nrow(test)/nrow(UniversalBank1))*100
 paste(Prop_train,"% In Training",Prop_valid,"% In Validation",Prop_test,"% In Test")
 
 ```
+
+> We check the partition result. 
+
+Now we prepare the data sets and normalize them before making predictions with K-NN
 
 ```{r 12, echo=TRUE}
 
@@ -509,6 +522,7 @@ test_norm <- predict(norm_values_2,test)
 
 ```
 
+
 <center>
 
 > Confusion Matrix for Train VS Valid
@@ -536,7 +550,9 @@ draw_confusion_matrix(Confusion_Matrix_k_New)
 
 </center>
 
-> Specificity is 0.669 which is lower than the Sensitivity (0.99), and kappa of 0.735 with accuracy of 0.96.
+> Specificity is 0.669 which is lower than the Sensitivity (0.99), doing bad predictions for the True Negative (Loan) and worse than the first Confusion Matrix (0.669<0.738). 
+
+$$ \dfrac{87}{87+43} = 0.669 = Specificity = True \ \ Negative \ \ Rate   $$ 
 
 
 <center>
@@ -566,7 +582,11 @@ draw_confusion_matrix(Confusion_Matrix_k_New2)
 
 </center>
 
-> The Specificity is higher (0.716) than the previous Confusion Matrix (0.669 - Train VS Valid), but still lower than the Sensitivity. The Accuracy is a bit higher 0.965 > 0.96, but Kappa is higher with this Confusion Matrix (0.767>0.735). 
+> The Specificity is higher (0.716) than the previous Confusion Matrix (0.669 - Train VS Valid), but still lower than the Sensitivity. The Accuracy is a bit higher 0.965 > 0.96 than the previous Confusion Matrix (Train VS Valid). The Specifity is still lower than our first Confusion Matrix (0.716<0.738). There is more agreement in this Confusion Matrix than the previous one (Kappa => 0.767 > 0.735). 
+
+$$ \dfrac{68}{68+27} = 0.716 = Specificity = True \ \ Negative \ \ Rate $$ 
+
+> Since all Confusion Matrices give a bad Specificity Rate (lower than 0.8), I would not rely in this model too much when it comes to predicting the Customer getting Loan. This K-NN model give more No Loan correctly than the opposite. 
 
 # <span style="color: #1c6155;">Exercise 3.</span>
 
@@ -574,7 +594,7 @@ draw_confusion_matrix(Confusion_Matrix_k_New2)
 
 ### Partition the data into training (60%) and validation (40%) sets
 
-```{r a1, echo=TRUE}
+```{r a1, echo=TRUE, results='asis'}
 
 UniversalBank2 <- fread("DATA/UniversalBank.csv")
 
@@ -594,13 +614,13 @@ paste(training_8_prop,"% In Training",validation_8_prop,"% In Validation")
 
 ```
 
+> We can check the partition after the sampling code. 
+
 ### a) Pivot Table
 
 <center>
 
 ```{r a2, echo=TRUE}
-
-library(pivottabler)
 
 # Duplicata of Training Data for Pivot Data
 pivot_data <- training_8
@@ -623,11 +643,17 @@ pt$renderPivot()
 
 </center>
 
+> Here is the first pivot table with Loan and Credit Card as rows, and Online as columns.
+
 ### b) Probability of a Customer who owns a bank credit card and is actively using online banking services would accept the loan offer?
 
-> Using Bayes Theorem
+Using Bayes Theorem
+
+<center>
 
 $$\small P(Loan=1 | CC=1 \cap Online=1) = \\ \small \dfrac{54}{506+54} =\dfrac{54}{560} = 0.09642857 = 9.64 \%$$ 
+
+</center>
 
 > Thus, there is 9.64% probability that this kind of customer would accept the loan offer.
 
@@ -636,8 +662,6 @@ $$\small P(Loan=1 | CC=1 \cap Online=1) = \\ \small \dfrac{54}{506+54} =\dfrac{5
 <center>
 
 ```{r a4, echo=TRUE}
-
-library(pivottabler)
 
 # Pivot Table 1
 pt1 <- PivotTable$new()
@@ -659,15 +683,17 @@ pt2$renderPivot()
 
 </center>
 
+> Here are the two pivot table, each for looking at Credit Card VS Loan or Online VS Loan
+
 ### d) Compute the following quantities
 
 #### i. 
 
-$$\small P (CC=1 | Loan=1) = \\ \small \dfrac{95}{297} = 0.3198653 = 31.99 \%$$
+$$\small P (CC=1 | Loan=1) = \\ \small \dfrac{P(Loan=1|CC=1)*P(CC=1)}{P(Loan=1)} = \\ \small 0.3198653 = 31.99 \%$$
 
 #### ii.
 
-$$\small P (Online=1 | Loan=1) =\\ \small  \dfrac{188}{297}= 0.6329966 = 63.30 \%$$
+$$\small P (Online=1 | Loan=1) = \\ \small \dfrac{P(Loan=1|Online=1)*P(Online=1)}{P(Loan=1)} = \\ \small  \dfrac{188}{297}= 0.6329966 = 63.30 \%$$
 
 #### iii.
 
@@ -675,11 +701,11 @@ $$\small P (Loan=1) =  \dfrac{297}{3050} = 0.09737705 = 9.74 \% $$
 
 #### iv.
 
-$$\small P (CC=1 | Loan=0) = \\ \small \dfrac{827}{2753} = 0.3003996 = 30.04 \%$$
+$$\small P (CC=1 | Loan=0) = \\ \small \dfrac{P(Loan=0|CC=1)*P(CC=1)}{P(Loan=0)} = \\ \small \dfrac{827}{2753} = 0.3003996 = 30.04 \%$$
 
 #### v.
 
-$$\small P (Online=1 | Loan=0) = \\ \small \dfrac{1626}{2753} = 0.5906284 = 59.06 \%$$
+$$\small P (Online=1 | Loan=0) = \\ \small \dfrac{P(Loan=0|Online=1)*P(Online=1)}{P(Loan=0)} =\\ \small \dfrac{1626}{2753} = 0.5906284 = 59.06 \%$$
 
 #### vi.
 
@@ -697,16 +723,13 @@ $$\small P(Loan=1|CC=1,Online=1) = \\ \small \dfrac{P(Loan=1)*P(CC=1|Loan=1)*P(O
 
 ### f) Accurate Estimate
 
-> The Naive approach give us 10.97%, while the Exact Bayes probability give us 9.64%
-
+> The Naive approach give us 10.97%, while the Complete Bayes probability give us 9.64%
 
 ### g) Run Model and Comparisons
 
 $$P(Loan=1|CC=1,Online=1)$$
 
 ```{r a5, echo=TRUE}
-
-library(naivebayes)
 
 # As factor for Loan
 training_8$Online <- factor(training_8$Online,levels = c(0,1),labels=c("Inactive Online","Active Online"))
@@ -722,7 +745,7 @@ Naivebayes
 ```
 
 $$\small P(Loan=1|CC=1,Online=1) = \\ \small \dfrac{P(Loan=1)*P(CC=1|Loan=1)*P(Online=1|Loan=1)}{P(CC=1)*P(Online=1)}=\\ \small  \dfrac{0.09737705*0.3198653*0.6329966}{0.3022951*0.5947541} = 0.1096621 = 10.97\% $$ 
-
+> The Naive Model and above question e) should give us the same estimate probabilities. We can see a difference in the Naive approach and Complete Bayes Probabilities. Naive Bayes assumes conditional independence where Complete Bayes theorem does not, this is why there is such a difference in estimates, but such strong conditional independence may not be relevant everytime. For instance, having a credit card may be correlated to being online such that the credit card gives some special access to online services that the customer wanted, thus the buy of this credit card. The naive approach is faster to compute, but the Bayesian Network Classifiers would be perhaps better since you can specify which features could be independent or not.
 
 # <span style="color: #1c6155;">References</span>
 
@@ -731,3 +754,7 @@ $$\small P(Loan=1|CC=1,Online=1) = \\ \small \dfrac{P(Loan=1)*P(CC=1|Loan=1)*P(O
 [Data Mining for Business Analytics: Concepts, Techniques, and Applications in R](https://www.wiley.com/en-us/Data+Mining+for+Business+Analytics:+Concepts,+Techniques,+and+Applications+in+R-p-9781118879368)
 
 [How to Split Data into Training & Test Sets in R (3 Methods)](https://www.statology.org/train-test-split-r/)
+
+[R how to visualize confusion matrix using the caret package](https://stackoverflow.com/questions/23891140/r-how-to-visualize-confusion-matrix-using-the-caret-package)
+
+[Friedman, N., Geiger, D., Provan, G., Langley, P. and Smyth, P. (1997). Bayesian Network Classifiers](http://www.cs.technion.ac.il/~dang/journal_papers/friedman1997Bayesian.pdf)
