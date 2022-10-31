@@ -90,11 +90,9 @@ If we want to double the average profit on each sale, we should take the first d
 
 > Still considering the new list of 1000 leads, if the company applies this predictive model with a lower cutoff of $2500, how far should it proceed down the ranked leads, in terms of deciles?
 
-We want the cutoff to be $2500: 
-
 $$ Ratio_{Estimated} = \dfrac{\$2500}{\$2500} = 1 $$
 
-If we take a look at the Decile-wise lift chart, we see that until the 6th decile we would get a mean response of 1 for all those included deciles until 6th one. 
+If we take a look at the Decile-wise lift chart, we see that until the 6th decile we would get a mean-response of 1 for all those previously included deciles. Thus we take all of them until the 6th decile. 
 
 <br />
 
