@@ -134,7 +134,7 @@ str(UniversalBank1)
 
 ```{r 31,echo=FALSE,warning=FALSE}
 
-dfSummary(UniversalBank1,graph.magnif = 0.75, method = 'render')
+print(dfSummary(UniversalBank1,graph.magnif = 0.75, method = 'render'))
 
 ```
 
@@ -302,8 +302,7 @@ for(i in 1:max_iterations){
 }
 
 # Table of Accuracy
-flextable(accuracy.df) %>% 
-  fontsize(size = 12, part = "all")
+flextable(accuracy.df) %>% fontsize(size = 12, part = "all")
 
 # Ploting the K and accuracy together
 ggplotly(
@@ -394,6 +393,9 @@ draw_confusion_matrix(Confusion_Matrix_k)
 ```
 
 </center>
+
+> This Confusion Matrix has a Accuracy of 0.968 and Specifity of 0.738, lower than the Sensitivity. Kappa is equal to 0.793.
+Among all Confusion Matrix, this one has the highest Specifity and Kappa. This Confusion Matrix has the highest F1 but really close to the last Confusion Matrix. 
 
 ### d. Consider the following customer:
 
@@ -534,6 +536,8 @@ draw_confusion_matrix(Confusion_Matrix_k_New)
 
 </center>
 
+> Specificity is 0.669 which is lower than the Sensitivity (0.99), and kappa of 0.735 with accuracy of 0.96.
+
 
 <center>
 
@@ -561,6 +565,8 @@ draw_confusion_matrix(Confusion_Matrix_k_New2)
 ```
 
 </center>
+
+> The Specificity is higher (0.716) than the previous Confusion Matrix (0.669 - Train VS Valid), but still lower than the Sensitivity. The Accuracy is a bit higher 0.965 > 0.96, but Kappa is higher with this Confusion Matrix (0.767>0.735). 
 
 # <span style="color: #1c6155;">Exercise 3.</span>
 
