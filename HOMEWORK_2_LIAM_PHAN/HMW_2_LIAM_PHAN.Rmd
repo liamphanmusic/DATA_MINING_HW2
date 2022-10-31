@@ -109,7 +109,7 @@ This two-stage process for predicting sales already give possible answer to the 
 
 #### Loading Dataset and Basic Data Quality Check
 
-```{r 2, echo=FALSE, warning=FALSE, results='hide'}
+```{r 2, echo=TRUE, warning=FALSE, results='hide'}
 
 # Loading the Universal Bank Dataset into R
 UniversalBank1 <- fread("DATA/UniversalBank.csv")
@@ -134,9 +134,10 @@ str(UniversalBank1)
 
 #### Summary of Universal.csv Dataset
 
-```{r 31,echo=FALSE,warning=FALSE}
+```{r 31,echo=TRUE,warning=FALSE,results="asis"}
 
-print(dfSummary(UniversalBank1,graph.magnif = 0.75, method = 'render'))
+library(summarytools) 
+dfSummary(UniversalBank1)
 
 ```
 
