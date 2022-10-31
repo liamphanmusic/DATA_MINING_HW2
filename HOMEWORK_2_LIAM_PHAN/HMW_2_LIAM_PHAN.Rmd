@@ -29,7 +29,7 @@ library(lubridate) # For Dates
 library(tidyverse) # Multiple Package for Useful Data wrangling
 library(esquisse) # Intuitive plotting
 library(plyr) # Data splitting
-library(dplyr)
+library(dplyr) # Data Wrangling
 library(ggplot2) # Plot Graphs
 library(naniar) # for NA exploration in Dataframe
 library(plotly) # Make ggplot2 Dynamic
@@ -41,6 +41,7 @@ library(rmdformats) # Theme of HTML
 library(manipulateWidget) # Handling multiple plotly graphs
 library(flextable) # Show Table
 library(class) # K-NN
+library(summarytools) # Beautiful and Efficient Summary for Dataset
 
 ```
 
@@ -68,7 +69,7 @@ $$ Costs_{Estimated} = 1000*\$2500 = \$2500000   $$
 
 <br />
 
-Leading to negative Total Profit of... 
+Leading to Total Profit of... 
 
 $$ TotalProfit_{Estimated} = Sales_{Estimated} - Costs_{Estimated} \\ = \$2128000 - \$2500000 = - \$372000  $$
 
@@ -92,7 +93,7 @@ We want the cutoff to be $2500:
 
 $$ Ratio_{Estimated} = \dfrac{\$2500}{\$2128} = 1.17 $$
 
-If we take a look at the Decile-wise lift chart, we see that the 6th decile (approx mean-reponse of 1, same as 2128$)
+If we take a look at the Decile-wise lift chart, we see that until the 6th decile we would get a mean response of 1 for all those included decile until 6th one. 
 
 <br />
 
@@ -100,7 +101,7 @@ If we take a look at the Decile-wise lift chart, we see that the 6th decile (app
 
 > Why use this two-stage process for predicting sales--why not simply develop a model for predicting profit for the 1000 new leads?
 
-
+This two-stage process for predicting sales already give possible answer to the managers for the 1000 leads predictions and which target customers they should choose for achieving such goals. Those 2 graphs help getting fast insights to the sales predictions and what to do for achieving the goals required by the board or company management.  
 
 
 # <span style="color: #1c6155;">Exercise 2.</span> 
@@ -109,19 +110,22 @@ If we take a look at the Decile-wise lift chart, we see that the 6th decile (app
 
 ### Loading Dataset and Basic Data Quality Check
 
-Dimensions, Variables Count and Dataset Structure
+```{r 2, echo=FALSE, warning=FALSE, results='hide'}
 
-```{r 2, echo=FALSE, warning=FALSE}
-
+# Loading the Universal Bank Dataset into R
 UniversalBank1 <- fread("DATA/UniversalBank.csv")
 
+# Quick insight of the table look
 flextable(head(UniversalBank1)) %>% 
   fontsize(size = 7, part = "all")
 
+# Dataset Dimensions
 dim(UniversalBank1)
 
+# Variables Count
 sapply(UniversalBank1, function(x) length(unique(x)))
 
+# Dataset Type and Structure
 str(UniversalBank1)
 
 
@@ -129,7 +133,24 @@ str(UniversalBank1)
 
 <center>
 
+### Summary of Universal.csv Dataset
+
+```{r 31,echo=FALSE,warning=FALSE}
+
+
+
+
+
+
+```
+
+</center>
+
+
+
 Missing Variables Plot
+
+<center>
 
 ```{r 3,echo=FALSE,warning=FALSE}
 
