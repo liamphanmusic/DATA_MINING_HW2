@@ -3,13 +3,15 @@ title: "HOMEWORK 2 - Creating Value Through Data Mining (S402010)"
 author: "Liam Phan"
 date: "`r Sys.Date()`"
 output:
-  rmdformats::material :
+  rmdformats::readthedown :
     self_contained: true
     thumbnails: true
     lightbox: true
     gallery: true
     highlight: tango
     code_folding: hide
+    
+  
 ---
 
 ```{r setup, include=FALSE}
@@ -18,7 +20,7 @@ rm(list = ls()) # clean environment
 cat("\014") # clean console
 ```
 
-# <span style="color: #1c6155;">Quick Start</span> 
+# Quick Start
 
 ## Loading Packages
 
@@ -48,7 +50,7 @@ library(caret) # Confusion Matrix
 
 > Those are required packages
 
-# <span style="color: #1c6155;">Exercise 1.</span> 
+# Exercise 1. 
 
 ## 5.6 Evaluating Predictive Performance
 
@@ -103,7 +105,7 @@ If we take a look at the Decile-wise lift chart, we see that until the 6th decil
 This two-stage process for predicting sales already give possible answer to the managers for the 1000 leads predictions and which target customers they should choose for achieving such goals. Those 2 graphs help getting fast insights to the sales predictions and what to do for achieving the goals required by the board or company management.  
 
 
-# <span style="color: #1c6155;">Exercise 2.</span> 
+# Exercise 2. 
 
 ## 7.2 Personnal Loan Acceptance
 
@@ -136,8 +138,16 @@ str(UniversalBank1)
 
 ```{r 31,echo=TRUE,warning=FALSE,results="asis"}
 
-library(summarytools) 
-dfSummary(UniversalBank1)
+# Load SummaryTools
+library(summarytools)
+
+# Required command by manual
+st_options(plain.ascii = FALSE, style = "grid")
+
+# Print the Summary to HTML
+print(dfSummary(UniversalBank1, varnumbers = FALSE, 
+                valid.col    = FALSE, 
+                graph.magnif = 0.75), method="render")
 
 ```
 
@@ -261,6 +271,8 @@ flextable(head(Customer_Test_norm)) %>%
 
 ```
 
+</break>
+
 #### Data of the Customer we want to predict after Prediction
 
 ```{r 6, echo=TRUE}
@@ -274,6 +286,8 @@ flextable(head(Customer_Test)) %>%
 </center>
 
 > This Customer would be classified as not getting a Personnal Loan (No Loan) by K-NN with K=1. 
+
+<break>
 
 ### b. What is the Choice of Κ that balances between overfitting and ignoring the predictor information?
 
@@ -521,9 +535,9 @@ test_norm <- predict(norm_values_2,test)
 
 ```
 
-<center>
+### Confusion Matrix for Train VS Valid
 
-> Confusion Matrix for Train VS Valid
+<center>
 
 ```{r 13, echo=TRUE}
 
@@ -552,10 +566,11 @@ draw_confusion_matrix(Confusion_Matrix_k_New)
 
 $$ \dfrac{87}{87+43} = 0.669 = Specificity = True \ \ Negative \ \ Rate   $$ 
 
+</break>
+
+### Confusion Matrix for Train VS Test
 
 <center>
-
-> Confusion Matrix for Train VS Test
 
 ```{r 14, echo=TRUE}
 
@@ -586,7 +601,7 @@ $$ \dfrac{68}{68+27} = 0.716 = Specificity = True \ \ Negative \ \ Rate $$
 
 > Since all Confusion Matrices give a bad Specificity Rate (lower than 0.8), I would not rely on this model too much when it comes to predicting the Customer getting Loan. This K-NN model give more "No Loan" correctly than the opposite. 
 
-# <span style="color: #1c6155;">Exercise 3.</span>
+# Exercise 3
 
 ## 8.1 Personal Loan Acceptance
 
@@ -641,6 +656,8 @@ pt$renderPivot()
 
 </center>
 
+</break>
+
 > Here is the first pivot table with Loan and Credit Card as rows, and Online as columns.
 
 ### b) Probability of a Customer who owns a bank credit card and is actively using online banking services would accept the loan offer?
@@ -680,6 +697,8 @@ pt2$renderPivot()
 ```
 
 </center>
+
+</break>
 
 > Here are the two pivot table, each for looking at Credit Card VS Loan or Online VS Loan
 
@@ -743,9 +762,10 @@ Naivebayes
 ```
 
 $$\small P(Loan=1|CC=1,Online=1) = \\ \small \dfrac{P(Loan=1)*P(CC=1|Loan=1)*P(Online=1|Loan=1)}{P(CC=1)*P(Online=1)}=\\ \small  \dfrac{0.09737705*0.3198653*0.6329966}{0.3022951*0.5947541} = 0.1096621 = 10.97\% $$ 
+
 > The Naive Model and above question e) should give us the same estimate probabilities. We can see a difference in the Naive approach and Complete Bayes Probabilities. Naive Bayes assumes conditional independence where Complete Bayes theorem does not, this is why there is such a difference in estimates, but such strong conditional independence may not be relevant everytime. For instance, having a credit card may be correlated to being online such that the credit card gives some special access to online services that the customer wanted, thus the buy of this credit card. The naive approach is faster to compute, but the Bayesian Network Classifiers would be perhaps better since you can specify which features could be independent or not.
 
-# <span style="color: #1c6155;">References</span>
+# References
 
 [Github Repo for this Homework 2](https://github.com/LiamPhan17/DATA_MINING_HW2)
 
