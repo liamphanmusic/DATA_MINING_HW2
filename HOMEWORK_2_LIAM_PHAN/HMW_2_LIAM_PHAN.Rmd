@@ -278,9 +278,9 @@ flextable(head(Customer_Test)) %>%
 
 ### b. What is the Choice of Κ that balances between overfitting and ignoring the predictor information?
 
-<center>
-
 We would to test multiple K such that the best accuracy would be chosen between the training and validations set (cross validation procedure)
+
+<center>
 
 ```{r 7, echo=TRUE, results = 'asis'}
 
