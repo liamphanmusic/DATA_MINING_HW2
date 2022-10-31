@@ -33,12 +33,9 @@ library(dplyr) # Data Wrangling
 library(ggplot2) # Plot Graphs
 library(naniar) # for NA exploration in Dataframe
 library(plotly) # Make ggplot2 Dynamic
-library(DT) # Render Table in a explorable UI
 library(gridExtra) # Multiple Plot at once
-library(corrplot) # Correlation Plot
 library(RColorBrewer) # For Color Palette
 library(rmdformats) # Theme of HTML
-library(manipulateWidget) # Handling multiple plotly graphs
 library(flextable) # Show Table
 library(class) # K-NN
 library(summarytools) # Beautiful and Efficient Summary for Dataset
@@ -137,18 +134,13 @@ str(UniversalBank1)
 
 ```{r 31,echo=FALSE,warning=FALSE}
 
-
-
-
-
+dfSummary(UniversalBank1,graph.magnif = 0.75, method = 'render')
 
 ```
 
 </center>
 
-
-
-Missing Variables Plot
+> We can see that most of the variables are of type "integer" except CCAvg being of type "numeric". We have no missing datas in all variables. We can see this better with a plot: 
 
 <center>
 
@@ -158,13 +150,13 @@ gg_miss_var(UniversalBank1, show_pct = TRUE)
 
 ```
 
-No Missing Values
-
 </center>
 
 ### Partition The Data Into Training (60%) and Validation (40%) Sets
 
-```{r 4,echo=TRUE}
+The Following Code Set Seed to 1 and partition the dataset in 2 sets, training and validation. 
+
+```{r 4,echo=TRUE,results = 'asis'}
 
 # Setting Seed
 set.seed(1)
@@ -185,11 +177,15 @@ paste(train_prop_100,"% In Training",validation_prop_100,"% In Validation")
 
 ``` 
 
+> Here is the confirmation of the effective pourcentages of each set category after the partition process.
+
 ### a. Considering the following customer: 
 
 > Age = 40, Experience = 10, Income = 84, Family = 2, CCAvg = 2, Education_1 = 0, Education_2 = 1, Education_3 = 0, Mortgage = 0, Securities Account = 0, CD Account = 0, Online = 1, and Credit Card = 1. 
 
-Perform a Κ-NN Classification with all predictors except ID and ZIP code using Κ = 1 
+Perform a Κ-NN Classification with all predictors except ID and ZIP code using Κ = 1
+
+<center>
 
 ```{r 5, echo=TRUE, results='hide'}
 
@@ -201,8 +197,8 @@ training <- training[,-c("ID","ZIP Code")]
 validation <- validation[,-c("ID","ZIP Code")]
 
 # Target Variable As Factor
-training$`Personal Loan` <- as.factor(training$`Personal Loan`) 
-validation$`Personal Loan` <- as.factor(validation$`Personal Loan`) 
+training$`Personal Loan` <- factor(training$`Personal Loan`, levels = c(0,1),labels = c("No Loan","Loan")) 
+validation$`Personal Loan` <- factor(validation$`Personal Loan`, levels = c(0,1),labels = c("No Loan","Loan")) 
 
 # Education As Factor
 training$Education <- as.factor(training$Education) 
@@ -248,19 +244,22 @@ Customer_Test_norm <- predict(norm_values, Customer_Test)
 ## KNN Training for Customer
 predictions_customer <- knn(train=training_norm[,-c("Personal Loan")],test = Customer_Test_norm, cl = training_norm$`Personal Loan`, k=1)
 
-predictions_customer <- as.factor(predictions_customer)
-
-levels(predictions_customer) <- c("Fail","Success")
-
 # Append Predictions to Customer not in Data
 Customer_Test$Predicted <- predictions_customer
 
-# Correct Factors of previous Validation
-levels(Customer_Test$Predicted) <- c("Fail","Success")
+```
+
+### Data of the Customer we want to predict after Normalization
+
+```{r 61, echo=TRUE}
+
+# Table Customer after Normalization
+flextable(head(Customer_Test_norm)) %>% 
+  fontsize(size = 7, part = "all")
 
 ```
 
-<center>
+### Data of the Customer we want to predict after Prediction
 
 ```{r 6, echo=TRUE}
 
@@ -272,13 +271,15 @@ flextable(head(Customer_Test)) %>%
 
 </center>
 
-> This Customer would be classified as not getting a Personnal Loan (Fail)
+> This Customer would be classified as not getting a Personnal Loan (No Loan) by K-NN with K=1. 
 
 ### b. What is the Choice of Κ that balances between overfitting and ignoring the predictor information?
 
 <center>
 
-```{r 7, echo=TRUE}
+We would to test multiple K such that the best accuracy would be chosen between the training and validations set (cross validation procedure)
+
+```{r 7, echo=TRUE, results = 'asis'}
 
 # Setting Seed
 set.seed(1)
@@ -287,7 +288,7 @@ set.seed(1)
 library(caret)
 
 # Number of iterations
-max_iterations = 20
+max_iterations = 30
 
 # Dataframe with 2 columns: k and accuracy
 accuracy.df <- data.frame(k=seq(1,max_iterations,1),accuracy=rep(0,max_iterations))
@@ -320,6 +321,8 @@ print(paste("Best K for Highest Accuracy is",highest_K))
 ```
 
 </center>
+
+> We can see that the highest the K, the less is the accuracy of the model is through cross validation. 
 
 ### c. Show the confusion matrix for the validation data that results from using best Κ
 
