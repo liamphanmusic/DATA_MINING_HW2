@@ -398,7 +398,7 @@ draw_confusion_matrix(Confusion_Matrix_k)
 </center>
 
 > This Confusion Matrix has a Accuracy of 0.968 and Specifity of 0.738, lower than the Sensitivity. Kappa is equal to 0.793.
-Among all Confusion Matrix, this one has the highest Specifity and Kappa. This Confusion Matrix has the highest F1 but really close to the last Confusion Matrix. Since the Specifity is the True negative rate, we can see that this model is not that good at predicting the Loan when it is actually a Loan. We can see that 48 customers were predicted no Loan while they actually had Loan, thus the following ratio:
+Among all Confusion Matrix, this one has the highest Specifity and Kappa. This Confusion Matrix has the highest F1 but really close to the last Confusion Matrix. Since the Specifity is the True negative rate, we can see that this model is not that good at predicting the Loan when it is actually a Loan. We can see that 48 customers were predicted no Loan while they actually had Loan, thus the following ratio: 
 
 $$ \dfrac{135}{135+48} = 0.738 = Specificity = True \ \ Negative \ \ Rate   $$ 
 
@@ -522,7 +522,6 @@ test_norm <- predict(norm_values_2,test)
 
 ```
 
-
 <center>
 
 > Confusion Matrix for Train VS Valid
@@ -586,7 +585,7 @@ draw_confusion_matrix(Confusion_Matrix_k_New2)
 
 $$ \dfrac{68}{68+27} = 0.716 = Specificity = True \ \ Negative \ \ Rate $$ 
 
-> Since all Confusion Matrices give a bad Specificity Rate (lower than 0.8), I would not rely in this model too much when it comes to predicting the Customer getting Loan. This K-NN model give more No Loan correctly than the opposite. 
+> Since all Confusion Matrices give a bad Specificity Rate (lower than 0.8), I would not rely on this model too much when it comes to predicting the Customer getting Loan. This K-NN model give more "No Loan" correctly than the opposite. 
 
 # <span style="color: #1c6155;">Exercise 3.</span>
 
