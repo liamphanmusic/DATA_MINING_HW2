@@ -45,7 +45,6 @@ library(pivottabler) # Pivot Table
 library(naivebayes) # Naive Bayes Function
 library(caret) # Confusion Matrix
 
-
 ```
 
 > Those are required packages
@@ -56,7 +55,7 @@ library(caret) # Confusion Matrix
 
 ### a. 
 
-> If the company beings working with a new set of 1000 leads to sell the same services, similar to the 500 in the plot study, witout any use of predictive modeling to target sales efforts, what is the estimated profit? 
+> If the company beings working with a new set of 1000 leads to sell the same services, similar to the 200 cases in the plot study, witout any use of predictive modeling to target sales efforts, what is the estimated profit? 
 
 <br />
 
@@ -100,7 +99,7 @@ If we take a look at the Decile-wise lift chart, we see that until the 6th decil
 
 ### d. 
 
-> Why use this two-stage process for predicting sales--why not simply develop a model for predicting profit for the 1000 new leads?
+> Why use this two-stage process for predicting sales -- why not simply develop a model for predicting profit for the 1000 new leads?
 
 This two-stage process for predicting sales already give possible answer to the managers for the 1000 leads predictions and which target customers they should choose for achieving such goals. Those 2 graphs help getting fast insights to the sales predictions and what to do for achieving the goals required by the board or company management.  
 
@@ -260,6 +259,7 @@ validation = validation %>% rename( Education_1 = `validation$Education1` , Educ
 training_norm <- training
 validation_norm <- validation
 
+# Remove the Dummies in the Preprocess stage
 training_norm_s <- training[,-c("Personal Loan","Online","CreditCard","Securities Account","CD Account","Education_1","Education_2","Education_3")]
 
 norm_values <- preProcess(training_norm_s,method = c("center","scale"))
@@ -366,7 +366,7 @@ print(paste( "K for Efficiency of not Overfitting is",efficient_k))
 
 </center>
 
-> We can see that the highest the K, the less is the accuracy of the model is through cross validation. 
+> We can see that the highest the K, the less is the accuracy of the model is through cross validation. This is due to the fact that taking more neighbours around the prediction soften the predictions, and give less accurate results.
 
 ### c. Show the confusion matrix for the validation data that results from using best Κ = 3
 
@@ -383,7 +383,7 @@ predictions_k <- knn(train=training_norm[,-c("Personal Loan")],test = validation
 # Confusion Matrix
 Confusion_Matrix_k <- confusionMatrix(data = predictions_k, reference = validation$`Personal Loan`)
 
-# Plotting Matrix Function (In the References)
+# Plotting Matrix Function (Cited In the References)
 draw_confusion_matrix <- function(cm) {
 
   layout(matrix(c(1,1,2)))
@@ -437,10 +437,9 @@ draw_confusion_matrix(Confusion_Matrix_k)
 
 </center>
 
-> This Confusion Matrix has a Accuracy of 0.964 and Specifity of 0.656, lower than the Sensitivity. Kappa is equal to 0.755
-Among all Confusion Matrix, this one has the highest Specifity and Kappa. This Confusion Matrix has the highest F1 but really close to the last Confusion Matrix. Since the Specifity is the True negative rate, we can see that this model is not that good at predicting the Loan when it is actually a Loan. We can see that 63 customers were predicted no Loan while they actually had Loan, thus the following ratio: 
+> This Confusion Matrix (1st) has a Accuracy of 0.96 and Specifity of 0.608, lower than the Sensitivity. Since the Specifity is the True negative rate, we can see that this model is not that good at predicting the Loan when it is actually a Loan. We can see that 74 customers were predicted no Loan while they actually had Loan, thus the following ratio: 
 
-$$ \dfrac{120}{120+63} = 0.656 = Specificity = True \ \ Negative \ \ Rate   $$ 
+$$ \dfrac{115}{115+74} = 0.608 = Specificity = True \ \ Negative \ \ Rate   $$ 
 
 ### d. Consider the following customer:
 
@@ -554,6 +553,7 @@ train_norm <- train
 validn_norm <- valid
 test_norm <- test
 
+# Remove the Dummies in the Preprocess stage
 train_norm_s <- train[,-c("Personal Loan","Online","CreditCard","Securities Account","CD Account","Education_1","Education_2","Education_3")]
 
 norm_values_2 <- preProcess(train_norm_s,method = c("center","scale"))
@@ -565,7 +565,7 @@ test_norm <- predict(norm_values_2,test)
 
 ```
 
-### Confusion Matrix for Train VS Valid
+### Confusion Matrix (2nd) for Train VS Valid
 
 <center>
 
@@ -592,13 +592,13 @@ draw_confusion_matrix(Confusion_Matrix_k_New)
 
 </center>
 
-> Specificity is 0.669 which is lower than the Sensitivity (0.99), doing bad predictions for the True Negative (Loan) and worse than the first Confusion Matrix (0.669<0.738). 
+> Specificity is 0.641 which is lower than the Sensitivity, doing bad predictions for the True Negative (Loan) but better than the first Confusion Matrix (0.641 > 0.608). 
 
 $$ \dfrac{87}{87+43} = 0.669 = Specificity = True \ \ Negative \ \ Rate   $$ 
 
 </break>
 
-### Confusion Matrix for Train VS Test
+### Confusion Matrix (3rd) for Train VS Test
 
 <center>
 
@@ -625,11 +625,11 @@ draw_confusion_matrix(Confusion_Matrix_k_New2)
 
 </center>
 
-> The Specificity is higher (0.716) than the previous Confusion Matrix (0.669 - Train VS Valid), but still lower than the Sensitivity. The Accuracy is a bit higher 0.965 > 0.96 than the previous Confusion Matrix (Train VS Valid). The Specifity is still lower than our first Confusion Matrix (0.716<0.738). There is more agreement in this Confusion Matrix than the previous one (Kappa => 0.767 > 0.735). 
+> The Specificity is lower (0.515) than the previous Confusion Matrix (0.641 - Train VS Valid), and still lower than the Sensitivity. The Accuracy is worse 0.951 < 0.964 than the previous Confusion Matrix (Train VS Valid). The Specifity is still lower than our first Confusion Matrix (0.515<0.608). The fact that the train is doing worse with the test set instead of the valid set could be because of the randomness and the sizes of the initial set.  
 
 $$ \dfrac{68}{68+27} = 0.716 = Specificity = True \ \ Negative \ \ Rate $$ 
 
-> Since all Confusion Matrices give a bad Specificity Rate (lower than 0.8), I would not rely on this model too much when it comes to predicting the Customer getting Loan. This K-NN model give more "No Loan" correctly than the opposite. 
+> Since all Confusion Matrices give a bad Specificity Rate (lower than 0.7), I would not rely on this model too much when it comes to predicting the Customer getting Loan. This K-NN model give more "No Loan" correctly than the opposite. 
 
 # Exercise 3
 
@@ -806,3 +806,11 @@ $$\small P(Loan=1|CC=1,Online=1) = \\ \small \dfrac{P(Loan=1)*P(CC=1|Loan=1)*P(O
 [R how to visualize confusion matrix using the caret package](https://stackoverflow.com/questions/23891140/r-how-to-visualize-confusion-matrix-using-the-caret-package)
 
 [Friedman, N., Geiger, D., Provan, G., Langley, P. and Smyth, P. (1997). Bayesian Network Classifiers](http://www.cs.technion.ac.il/~dang/journal_papers/friedman1997Bayesian.pdf)
+
+[RMD Format Github](https://github.com/juba/rmdformats)
+
+[Flextable Manual](https://ardata-fr.github.io/flextable-book/design.html)
+
+[Summary Tools](https://cran.r-project.org/web/packages/summarytools/summarytools.pdf)
+
+
