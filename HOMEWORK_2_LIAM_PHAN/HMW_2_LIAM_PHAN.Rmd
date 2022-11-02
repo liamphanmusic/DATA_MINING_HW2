@@ -84,7 +84,7 @@ $$ TotalProfit_{Estimated} = Sales_{Estimated} - Costs_{Estimated} \\ = \$250'00
 
 $$ Ratio_{Estimated} = \dfrac{2*\$2500}{\$2500} = 2 $$
 
-If we want to double the average profit on each sale, we should take the first decile (10%) on the Decile-wise lift chart which double the mean-response. 
+If we want to double the average profit on each sale, we should take the first decile (10%) of those customers on the Decile-wise lift chart which double the mean-response. 
 
 <br />
 
@@ -94,7 +94,7 @@ If we want to double the average profit on each sale, we should take the first d
 
 $$ Ratio_{Estimated} = \dfrac{\$2500}{\$2500} = 1 $$
 
-If we take a look at the Decile-wise lift chart, we see that until the 6th decile we would get a mean-response of 1 for all those previously included deciles. Thus we take all of them until the 6th decile. 
+If we take a look at the Decile-wise lift chart, we see that until the 6th decile we would get a mean-response of 1 for all those previously included deciles. Thus we take all customers until the 6th decile. 
 
 <br />
 
@@ -333,7 +333,11 @@ ggplot(accuracy.df) +
 # Choosing Efficient K
 highest_K <- which.max(accuracy.df$accuracy)
 
-print(paste("Best K for Highest Accuracy is",highest_K))
+# By looking at the graph
+efficient_k <- 3
+
+print(paste("K for Highest Accuracy is",highest_K))
+print(paste( "K for Efficiency of not Overfitting is",efficient_k))
 
 ```
 
@@ -341,7 +345,7 @@ print(paste("Best K for Highest Accuracy is",highest_K))
 
 > We can see that the highest the K, the less is the accuracy of the model is through cross validation. 
 
-### c. Show the confusion matrix for the validation data that results from using best Κ
+### c. Show the confusion matrix for the validation data that results from using best Κ = 3
 
 <center>
 
@@ -351,7 +355,7 @@ print(paste("Best K for Highest Accuracy is",highest_K))
 set.seed(1)
 
 # Computing Confusion Matrix with Best K
-predictions_k <- knn(train=training_norm[,-c("Personal Loan")],test = validation_norm[,-c("Personal Loan")], cl = training_norm$`Personal Loan`, highest_K)
+predictions_k <- knn(train=training_norm[,-c("Personal Loan")],test = validation_norm[,-c("Personal Loan")], cl = training_norm$`Personal Loan`, efficient_k)
 
 # Confusion Matrix
 Confusion_Matrix_k <- confusionMatrix(data = predictions_k, reference = validation$`Personal Loan`)
@@ -410,10 +414,10 @@ draw_confusion_matrix(Confusion_Matrix_k)
 
 </center>
 
-> This Confusion Matrix has a Accuracy of 0.968 and Specifity of 0.738, lower than the Sensitivity. Kappa is equal to 0.793.
-Among all Confusion Matrix, this one has the highest Specifity and Kappa. This Confusion Matrix has the highest F1 but really close to the last Confusion Matrix. Since the Specifity is the True negative rate, we can see that this model is not that good at predicting the Loan when it is actually a Loan. We can see that 48 customers were predicted no Loan while they actually had Loan, thus the following ratio: 
+> This Confusion Matrix has a Accuracy of 0.964 and Specifity of 0.656, lower than the Sensitivity. Kappa is equal to 0.755
+Among all Confusion Matrix, this one has the highest Specifity and Kappa. This Confusion Matrix has the highest F1 but really close to the last Confusion Matrix. Since the Specifity is the True negative rate, we can see that this model is not that good at predicting the Loan when it is actually a Loan. We can see that 63 customers were predicted no Loan while they actually had Loan, thus the following ratio: 
 
-$$ \dfrac{135}{135+48} = 0.738 = Specificity = True \ \ Negative \ \ Rate   $$ 
+$$ \dfrac{120}{120+63} = 0.656 = Specificity = True \ \ Negative \ \ Rate   $$ 
 
 ### d. Consider the following customer:
 
@@ -431,7 +435,7 @@ Customer_Test_2 <- data.frame("Age"=40,"Experience"=10,"Income"=84,"Family"=2,"C
 Customer_Test_2_norm <- predict(norm_values, Customer_Test_2)
 
 ## KNN Training for Customer
-predictions_customer_2 <- knn(train=training_norm[,-c("Personal Loan")],test = Customer_Test_2_norm, cl = training_norm$`Personal Loan`, k=highest_K)
+predictions_customer_2 <- knn(train=training_norm[,-c("Personal Loan")],test = Customer_Test_2_norm, cl = training_norm$`Personal Loan`, k=efficient_k)
 
 # Append Predictions to Customer not in Data
 Customer_Test_2$Predicted <- predictions_customer_2
@@ -547,7 +551,7 @@ test_norm <- predict(norm_values_2,test)
 set.seed(1)
 
 # Computing Confusion Matrix with Best K
-predictions_k_new <- knn(train=train_norm[,-c("Personal Loan")],test = valid_norm[,-c("Personal Loan")], cl = train_norm$`Personal Loan`, highest_K)
+predictions_k_new <- knn(train=train_norm[,-c("Personal Loan")],test = valid_norm[,-c("Personal Loan")], cl = train_norm$`Personal Loan`, efficient_k)
 
 # As Factor Predictions
 predictions_k_new <- as.factor(predictions_k_new)
@@ -580,7 +584,7 @@ $$ \dfrac{87}{87+43} = 0.669 = Specificity = True \ \ Negative \ \ Rate   $$
 set.seed(1)
 
 # Computing Confusion Matrix with Best K
-predictions_k_new2 <- knn(train=train_norm[,-c("Personal Loan")],test = test_norm[,-c("Personal Loan")], cl = train_norm$`Personal Loan`, highest_K)
+predictions_k_new2 <- knn(train=train_norm[,-c("Personal Loan")],test = test_norm[,-c("Personal Loan")], cl = train_norm$`Personal Loan`, efficient_k)
 
 # As Factor Predictions
 predictions_k_new2 <- as.factor(predictions_k_new2)
