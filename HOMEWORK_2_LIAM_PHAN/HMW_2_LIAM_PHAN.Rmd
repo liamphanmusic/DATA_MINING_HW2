@@ -186,7 +186,7 @@ print(dfSummary(UniversalBank1$Experience, varnumbers = FALSE,
 
 
 
-> And see that we lost those number of observations when removing negative experiences:
+> And see that we lost those number of observations when removing negative years of experiences:
 
 $$ 5000-4948 = 52 \ Observations $$
 
