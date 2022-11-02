@@ -596,7 +596,7 @@ draw_confusion_matrix(Confusion_Matrix_k_New)
 
 > Specificity is 0.641 which is lower than the Sensitivity, doing bad predictions for the True Negative (Loan) but better than the first Confusion Matrix (0.641 > 0.608). 
 
-$$ \dfrac{87}{87+43} = 0.669 = Specificity = True \ \ Negative \ \ Rate   $$ 
+$$ \dfrac{84}{84+47} = 0.641 = Specificity = True \ \ Negative \ \ Rate   $$ 
 
 </break>
 
@@ -629,7 +629,7 @@ draw_confusion_matrix(Confusion_Matrix_k_New2)
 
 > The Specificity is lower (0.515) than the previous Confusion Matrix (0.641 - Train VS Valid), and still lower than the Sensitivity. The Accuracy is worse 0.951 < 0.964 than the previous Confusion Matrix (Train VS Valid). The Specifity is still lower than our first Confusion Matrix (0.515<0.608). The fact that the train is doing worse with the test set instead of the valid set could be because of the randomness and the sizes of the initial set.  
 
-$$ \dfrac{68}{68+27} = 0.716 = Specificity = True \ \ Negative \ \ Rate $$ 
+$$ \dfrac{51}{51+48} = 0.515 = Specificity = True \ \ Negative \ \ Rate $$ 
 
 > Since all Confusion Matrices give a bad Specificity Rate (lower than 0.7), I would not rely on this model too much when it comes to predicting the Customer getting Loan. This K-NN model give more "No Loan" correctly than the opposite. 
 
