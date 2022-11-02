@@ -772,7 +772,7 @@ $$\small P(Loan=1|CC=1,Online=1) = \\ \small \dfrac{P(Loan=1)*P(CC=1|Loan=1)*P(O
 
 ### f) Accurate Estimate
 
-> The Naive approach give us 10.97%, while the Complete Bayes probability give us 9.64%
+> The Naive approach give us 10.97%, while the Complete Bayes probability give us 9.64%. Since the Naive approach is making strong assumptions on independence, we could see the Complete Bayes Probability as more accurate, but further inspection on different Bayesian Model could help us decide if the naive approach is the best or not. 
 
 ### g) Run Model and Comparisons
 
