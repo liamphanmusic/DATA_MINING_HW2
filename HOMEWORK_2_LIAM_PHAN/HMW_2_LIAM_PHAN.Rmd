@@ -166,6 +166,8 @@ gg_miss_var(UniversalBank1, show_pct = TRUE)
 
 > and confirm there is no missings.
 
+</center>
+
 We can remove the problematic observations (Negative Experiences Observations)
 
 ```{r 133,echo=TRUE,warning=FALSE}
@@ -182,7 +184,7 @@ print(dfSummary(UniversalBank1$Experience, varnumbers = FALSE,
 ```
 
 
-</center>
+
 
 > And see that we lost those number of observations when removing negative experiences:
 
