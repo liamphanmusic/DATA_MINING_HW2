@@ -155,7 +155,19 @@ print(dfSummary(UniversalBank1, varnumbers = FALSE,
 
 > We can see that most of the variables are of type "integer" except CCAvg being of type "numeric". We have no missing datas in all variables. We can see that Experience have some negative values, up to -3. That doesn't make sense since the definition of the variable is the following: #years of professional experience. We either could remove those observations or convert the experience to a + sign, depending on the root causes of those typos. 
 
-We can remove those observations (Negative Experiences Observations)
+We can plot the missing variables: 
+
+<center>
+
+```{r 3,echo=FALSE,warning=FALSE}
+
+gg_miss_var(UniversalBank1, show_pct = TRUE)
+
+```
+
+> and confirm there is no missings.
+
+We can remove the problematic observations (Negative Experiences Observations)
 
 ```{r 133,echo=TRUE,warning=FALSE}
 
@@ -170,20 +182,12 @@ print(dfSummary(UniversalBank1$Experience, varnumbers = FALSE,
 
 ```
 
-We can plot the missing variables: 
-
-<center>
-
-```{r 3,echo=FALSE,warning=FALSE}
-
-gg_miss_var(UniversalBank1, show_pct = TRUE)
-
-```
-
-> and confirm there is no missings.
 
 </center>
 
+> And see that we lost those number of observations when removing negative experiences:
+
+$$ 5000-4948 = 52 \ Observations $$
 
 #### Partition The Data Into Training (60%) and Validation (40%) Sets
 
