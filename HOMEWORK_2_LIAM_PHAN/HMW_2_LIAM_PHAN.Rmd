@@ -155,11 +155,18 @@ print(dfSummary(UniversalBank1, varnumbers = FALSE,
 
 > We can see that most of the variables are of type "integer" except CCAvg being of type "numeric". We have no missing datas in all variables. We can see that Experience have some negative values, up to -3. That doesn't make sense since the definition of the variable is the following: #years of professional experience. We either could remove those observations or convert the experience to a + sign, depending on the root causes of those typos. 
 
-```{r 13,echo=FALSE,warning=FALSE}
+We can remove those observations (Negative Experiences Observations)
+
+```{r 133,echo=TRUE,warning=FALSE}
 
 # Removing problematic observations in Experience 
 
 UniversalBank1 <- UniversalBank1[Experience>=0,]
+
+# Print the Summary to HTML
+print(dfSummary(UniversalBank1$Experience, varnumbers = FALSE, 
+                valid.col    = FALSE, 
+                graph.magnif = 0.75), method="render")
 
 ```
 
@@ -176,7 +183,6 @@ gg_miss_var(UniversalBank1, show_pct = TRUE)
 > and confirm there is no missings.
 
 </center>
-
 
 
 #### Partition The Data Into Training (60%) and Validation (40%) Sets
@@ -200,7 +206,7 @@ validation_prop <- dim(validation)
 train_prop_100 <- (train_prop[1]/nrow(UniversalBank1))*100
 validation_prop_100 <- (validation_prop[1]/nrow(UniversalBank1))*100
 
-paste(train_prop_100,"% In Training",validation_prop_100,"% In Validation")
+paste(round(train_prop_100),"% In Training",round(validation_prop_100),"% In Validation")
 
 ``` 
 
@@ -247,11 +253,10 @@ training = training %>% rename( Education_1 = `training$Education1` , Education_
 validation = validation %>% rename( Education_1 = `validation$Education1` , Education_2 = `validation$Education2`, Education_3 = `validation$Education3`)
 
 # Preprocess for Data Normalization
-
 training_norm <- training
 validation_norm <- validation
 
-training_norm_s <- training[,-c("Personal Loan")]
+training_norm_s <- training[,-c("Personal Loan","Online","CreditCard","Securities Account","CD Account","Education_1","Education_2","Education_3")]
 
 norm_values <- preProcess(training_norm_s,method = c("center","scale"))
 
@@ -456,6 +461,9 @@ Customer_Test_2$Predicted <- predictions_customer_2
 
 ```
 
+
+#### Customer After Predictions with K=3
+
 ```{r 10, echo=TRUE}
 
 # Table Customer after Predictions
@@ -487,7 +495,7 @@ Prop_valid <- (nrow(valid)/nrow(UniversalBank1))*100
 Prop_test <- (nrow(test)/nrow(UniversalBank1))*100
 
 # Print Proportion
-paste(Prop_train,"% In Training",Prop_valid,"% In Validation",Prop_test,"% In Test")
+paste(round(Prop_train),"% In Training",round(Prop_valid),"% In Validation",round(Prop_test),"% In Test")
 
 ```
 
@@ -542,7 +550,7 @@ train_norm <- train
 validn_norm <- valid
 test_norm <- test
 
-train_norm_s <- train[,-c("Personal Loan")]
+train_norm_s <- train[,-c("Personal Loan","Online","CreditCard","Securities Account","CD Account","Education_1","Education_2","Education_3")]
 
 norm_values_2 <- preProcess(train_norm_s,method = c("center","scale"))
 
