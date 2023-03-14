@@ -1,2 +1,5 @@
 # DATA_MINING_HW2
- Second Homework for Data Mining Course
+Master In Business Analytics - University of Geneva
+
+Creating Value Through Data Mining
+
